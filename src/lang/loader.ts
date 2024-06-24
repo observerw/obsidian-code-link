@@ -68,7 +68,9 @@ abstract class Loader<T> {
 			file: `${tmpPath}/${pkg}.tgz`,
 			cwd: tmpPath,
 		});
-		await fs.rename(`${tmpPath}/package`, `${this._basePath}/${pkg}`);
+		await fs.cp(`${tmpPath}/package`, `${this._basePath}/${pkg}`, {
+			recursive: true,
+		});
 		await fs.rmdir(tmpPath, { recursive: true });
 	}
 
