@@ -1,0 +1,39 @@
+{
+	"name": "obsidian-sample-plugin",
+	"version": "1.0.0",
+	"description": "This is a sample plugin for Obsidian (https://obsidian.md)",
+	"main": "main.js",
+	"scripts": {
+		"dev": "node esbuild.config.mjs",
+		"build": "tsc -noEmit -skipLibCheck && node esbuild.config.mjs production",
+		"version": "node version-bump.mjs && git add manifest.json versions.json"
+	},
+	"keywords": [],
+	"author": "",
+	"license": "MIT",
+	"devDependencies": {
+		"@codemirror/view": "^6.28.1",
+		"@types/node": "^16.11.6",
+		"@types/tar": "^6.1.13",
+		"@typescript-eslint/eslint-plugin": "7.13.0",
+		"@typescript-eslint/parser": "7.13.0",
+		"builtin-modules": "3.3.0",
+		"esbuild": "0.17.3",
+		"esbuild-plugin-inline-import": "^1.0.4",
+		"node-addon-api": "^8.0.0",
+		"obsidian": "latest",
+		"tslib": "2.4.0",
+		"typescript": "5.4.5"
+	},
+	"dependencies": {
+		"@electron/remote": "^2.1.2",
+		"@popperjs/core": "^2.11.8",
+		"fastest-levenshtein": "^1.0.16",
+		"glob": "^10.4.2",
+		"globby": "^14.0.1",
+		"iconify-icon": "^2.1.0",
+		"ignore": "^5.3.1",
+		"node-gyp-build": "^4.8.1",
+		"tar": "^7.2.0"
+	}
+}
