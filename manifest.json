@@ -1,11 +1,10 @@
 {
-	"id": "obsidian-code-link",
+	"id": "code-link",
 	"name": "Code Link",
-	"version": "1.0.0",
+	"version": "1.0.1",
 	"minAppVersion": "0.15.0",
 	"description": "Link to code files in your notes",
 	"author": "observerw",
-	"authorUrl": "https://obsidian.md",
-	"fundingUrl": "https://obsidian.md/pricing",
+	"authorUrl": "https://github.com/observerw",
 	"isDesktopOnly": true
 }
