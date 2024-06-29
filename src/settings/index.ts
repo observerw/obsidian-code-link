@@ -34,49 +34,6 @@ export const loadSettings = async (plugin: CodeLinkPlugin) => {
 	);
 };
 
-// export class CodeLinkPluginSettings {
-// 	public relImportDirPath: string = "projects";
-// 	public enableTagSearch: boolean = true;
-// 	public showPathInEmbed: boolean = true;
-// 	public importWithIgnore: boolean = true;
-
-// 	private constructor(
-// 		private _plugin: CodeLinkPlugin,
-// 		data: { [key: string]: unknown }
-// 	) {
-// 		for (const key of Object.keys(data ?? {})) {
-// 			Object.assign(this, { [key]: data[key] });
-// 		}
-// 	}
-
-// 	static async load(plugin: CodeLinkPlugin): Promise<CodeLinkPluginSettings> {
-// 		const saved_settings = await plugin.loadData();
-
-// 		return new Proxy(
-// 			new CodeLinkPluginSettings(plugin, saved_settings ?? {}),
-// 			{
-// 				// auto save on change
-// 				set: (target, prop, value) => {
-// 					if (!target || !(prop in target)) {
-// 						return false;
-// 					}
-// 					Object.assign(target, { [prop]: value });
-// 					target.save();
-// 					return true;
-// 				},
-// 			}
-// 		);
-// 	}
-
-// 	async save() {
-// 		console.log("saving");
-
-// 		await this._plugin.saveData({ a: 1 });
-
-// 		console.log("saved");
-// 	}
-// }
-
 export class CodeLinkPluginSettingTab extends PluginSettingTab {
 	constructor(private _plugin: CodeLinkPlugin) {
 		super(_plugin.app, _plugin);
@@ -91,11 +48,13 @@ export class CodeLinkPluginSettingTab extends PluginSettingTab {
 		if (!pkgExists) {
 			downloadBtnSetting.setDesc(
 				createFragment((el) => {
-					const p = el.createEl("p");
-					p.style.color = "red";
-					p.style.margin = "0";
-					p.textContent =
-						"⚠️ATTENTION: Please download the necessary components first to use the plugin";
+					const p = el.createEl("p", {
+						cls: "code-link-settings-prompt",
+						attr: {
+							status: "warning",
+						},
+						text: "⚠️ATTENTION: Please download the necessary components first to use the plugin",
+					});
 
 					el.append(p);
 				})
@@ -104,10 +63,13 @@ export class CodeLinkPluginSettingTab extends PluginSettingTab {
 			const supportedLangs = SupportedLangsArray.join(", ");
 			downloadBtnSetting.setDesc(
 				createFragment((el) => {
-					const p = el.createEl("p");
-					p.style.color = "green";
-					p.style.margin = "0";
-					p.textContent = `✅You have downloaded the necessary components, current supported languages are: ${supportedLangs}`;
+					const p = el.createEl("p", {
+						cls: "code-link-settings-prompt",
+						attr: {
+							status: "success",
+						},
+						text: `✅You have downloaded the necessary components, current supported languages are: ${supportedLangs}`,
+					});
 
 					el.append(p);
 				})

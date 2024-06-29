@@ -14,11 +14,13 @@ export class CodeLinkEmbedPreview extends Component {
 	constructor(plugin: CodeLinkPlugin, sourcePath: string) {
 		super(plugin, sourcePath);
 
-		this._codeEl = document.createElement("div");
+		this._codeEl = this._containerEl.createEl("div", {
+			cls: "code-link-embed-preview-code",
+		});
 
-		this._textEl = document.createElement("div");
-		this._textEl.style.fontSize = "0.8em";
-		this._textEl.style.color = "gray";
+		this._textEl = this._containerEl.createEl("div", {
+			cls: "code-link-embed-preview-text",
+		});
 	}
 
 	private _highLightLines(node: TagTreeNode): { start: number; end: number } {
@@ -31,7 +33,7 @@ export class CodeLinkEmbedPreview extends Component {
 	}
 
 	async setCode(file: TFile, node?: TagTreeNode | null): Promise<void> {
-		this._codeEl.innerHTML = "";
+		this._codeEl.replaceChildren();
 
 		const langName = getLang(file.path);
 		const text = node
@@ -42,7 +44,7 @@ export class CodeLinkEmbedPreview extends Component {
 	}
 
 	setText(file: TFile, targetNode?: TagTreeNode | null) {
-		this._textEl.innerHTML = "";
+		this._textEl.replaceChildren();
 
 		if (!this._plugin.settings.showPathInEmbed) {
 			return;
@@ -76,8 +78,7 @@ export class CodeLinkEmbedPreview extends Component {
 			const linkEl = linkEls[i] as HTMLAnchorElement;
 
 			if (this._activeNode?.id === node.id) {
-				linkEl.style.fontStyle = "italic";
-				linkEl.style.fontWeight = "bold";
+				linkEl.addClass("code-link-embed-preview-tag");
 			}
 
 			linkEl.removeAttribute("href");
@@ -101,7 +102,7 @@ export class CodeLinkEmbedPreview extends Component {
 		}
 	}
 
-	render(file: TFile, node?: TagTreeNode | null): HTMLElement[] {
+	render(file: TFile, node?: TagTreeNode | null): HTMLElement {
 		if (node) {
 			this._activeNode = node;
 		}
@@ -109,6 +110,6 @@ export class CodeLinkEmbedPreview extends Component {
 		this.setCode(file, node);
 		this.setText(file, node);
 
-		return [this._codeEl, this._textEl];
+		return this._containerEl;
 	}
 }

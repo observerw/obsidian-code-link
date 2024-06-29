@@ -6,3 +6,37 @@ available in the app when your plugin is enabled.
 If your plugin does not need CSS, delete this file.
 
 */
+
+/* .code-link-embed-preview-code {
+} */
+
+.code-link-embed-preview-text {
+	font-size: 0.8em;
+	color: gray;
+}
+
+.code-link-embed-preview-tag {
+	font-style: italic;
+	font-weight: bold;
+}
+
+.code-link-hover-preview-popover {
+	max-height: 50vh;
+}
+
+.code-link-hover-preview-popover > pre {
+	margin: 0;
+	overflow: auto;
+}
+
+.code-link-settings-prompt {
+	margin: 0;
+}
+
+.code-link-settings-prompt[status="success"] {
+	color: green;
+}
+
+.code-link-settings-prompt[status="warning"] {
+	color: red;
+}

@@ -33,7 +33,7 @@ export class CodeLinkEmbedPreviewPostProcessor extends PostProcessor {
 			}
 
 			embed.replaceWith(
-				...new CodeLinkEmbedPreview(this._plugin, sourcePath).render(
+				new CodeLinkEmbedPreview(this._plugin, sourcePath).render(
 					file,
 					node
 				)

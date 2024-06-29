@@ -32,8 +32,8 @@ export class CodeLinkHoverPreviewObserver {
 			return;
 		}
 
-		el.innerHTML = "";
-		el.style.maxHeight = "50vh";
+		el.replaceChildren();
+		el.addClass("code-link-hover-preview-popover");
 
 		const code = await this.hovering.content();
 
@@ -44,10 +44,6 @@ export class CodeLinkHoverPreviewObserver {
 			this.sourcePath,
 			this._plugin
 		);
-
-		const preEl = el.querySelector("pre")!;
-		preEl.style.margin = "0";
-		preEl.style.overflow = "auto";
 
 		const btnEl = el.querySelector(".copy-code-button");
 		btnEl?.remove();

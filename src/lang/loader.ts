@@ -7,6 +7,7 @@ import { LangScmMap, SupportedLang, SupportedLangs } from "./data";
 import fs from "fs/promises";
 import os from "os";
 import path from "path";
+import { requestUrl } from "obsidian";
 
 type Paths = {
 	relPath: string;
@@ -23,7 +24,7 @@ abstract class Loader<T> {
 	protected get _relBasePath(): string {
 		const configDir = this._plugin.app.vault.configDir;
 		const pluginId = this._plugin.manifest.id;
-		const relPath = `${configDir}/plugins/${pluginId}`;
+		const relPath = `${configDir}/plugins/obsidian-${pluginId}`;
 
 		return relPath;
 	}
@@ -33,19 +34,18 @@ abstract class Loader<T> {
 	}
 
 	protected async _tarballUrl(pkg: string) {
-		const resp = await fetch(`https://registry.npmjs.org/${pkg}`);
+		const { json } = await requestUrl(`https://registry.npmjs.org/${pkg}`);
 		const {
 			versions,
 			"dist-tags": { latest },
-		} = (await resp.json()) as NpmPackageMetadata;
-		const tarball = versions[latest]!.dist.tarball;
-		return tarball;
+		} = json as NpmPackageMetadata;
+		return versions[latest]!.dist.tarball;
 	}
 
 	protected _pkgPaths(pkg: string): Paths {
 		return {
-			relPath: `${this._relBasePath}/${pkg}`,
-			absPath: `${this._basePath}/${pkg}`,
+			relPath: path.join(this._relBasePath, pkg),
+			absPath: path.join(this._basePath, pkg),
 		};
 	}
 
@@ -57,13 +57,15 @@ abstract class Loader<T> {
 	protected async _downloadPackage(pkg: string): Promise<void> {
 		const tarballUrl = await this._tarballUrl(pkg);
 
-		const resp = await fetch(tarballUrl);
-		const buffer = await resp.arrayBuffer();
+		const resp = await requestUrl(tarballUrl);
 
 		const tmpPath = await fs.mkdtemp(
 			path.join(os.tmpdir(), "tree-sitter-")
 		);
-		await fs.writeFile(`${tmpPath}/${pkg}.tgz`, Buffer.from(buffer));
+		await fs.writeFile(
+			`${tmpPath}/${pkg}.tgz`,
+			Buffer.from(resp.arrayBuffer)
+		);
 		await tar.extract({
 			file: `${tmpPath}/${pkg}.tgz`,
 			cwd: tmpPath,

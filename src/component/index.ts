@@ -2,10 +2,14 @@ import { MarkdownRenderer } from "obsidian";
 import CodeLinkPlugin from "src/main";
 
 export abstract class Component {
+	protected _containerEl: HTMLElement;
+
 	constructor(
 		protected _plugin: CodeLinkPlugin,
 		protected _sourcePath: string
-	) {}
+	) {
+		this._containerEl = document.createEl("div");
+	}
 
 	markdown(el: HTMLElement, markdownText: string): void {
 		MarkdownRenderer.render(
@@ -17,5 +21,5 @@ export abstract class Component {
 		);
 	}
 
-	abstract render(...args: unknown[]): HTMLElement[];
+	abstract render(...args: unknown[]): HTMLElement;
 }
