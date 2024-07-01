@@ -32,7 +32,7 @@ export class CodeLinkHoverPreviewObserver {
 			return;
 		}
 
-		el.replaceChildren();
+		el.empty();
 		el.addClass("code-link-hover-preview-popover");
 
 		const code = await this.hovering.content();
@@ -59,7 +59,6 @@ export class CodeLinkHoverPreviewPostProcessor extends PostProcessor {
 	}
 
 	process: MarkdownPostProcessor = (el, { sourcePath }) => {
-		// FIXME post processor won't be called again if plugin is disabled after file is opened
 		this._observer.sourcePath = sourcePath;
 
 		const internalLinkEls = Array.from(
@@ -75,11 +74,17 @@ export class CodeLinkHoverPreviewPostProcessor extends PostProcessor {
 						"data-href"
 					);
 
-					const item =
-						link &&
-						CodeLinkItem.fromInner(this._plugin, sourcePath, link);
+					if (!link) {
+						return;
+					}
 
-					if (item && item.lang) {
+					const item = CodeLinkItem.fromInner(
+						this._plugin,
+						sourcePath,
+						link
+					);
+
+					if (item?.lang) {
 						this._observer.hovering = item;
 					}
 				}

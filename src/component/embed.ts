@@ -33,7 +33,7 @@ export class CodeLinkEmbedPreview extends Component {
 	}
 
 	async setCode(file: TFile, node?: TagTreeNode | null): Promise<void> {
-		this._codeEl.replaceChildren();
+		this._codeEl.empty();
 
 		const langName = getLang(file.path);
 		const text = node
@@ -44,7 +44,7 @@ export class CodeLinkEmbedPreview extends Component {
 	}
 
 	setText(file: TFile, targetNode?: TagTreeNode | null) {
-		this._textEl.replaceChildren();
+		this._textEl.empty();
 
 		if (!this._plugin.settings.showPathInEmbed) {
 			return;
