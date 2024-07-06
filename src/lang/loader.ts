@@ -15,16 +15,12 @@ type Paths = {
 };
 
 abstract class Loader<T> {
-	protected _plugin: CodeLinkPlugin;
-
-	constructor(plugin: CodeLinkPlugin) {
-		this._plugin = plugin;
-	}
+	constructor(protected _plugin: CodeLinkPlugin) {}
 
 	protected get _relBasePath(): string {
 		const configDir = this._plugin.app.vault.configDir;
 		const pluginId = this._plugin.manifest.id;
-		const relPath = `${configDir}/plugins/obsidian-${pluginId}`;
+		const relPath = `${configDir}/plugins/${pluginId}`;
 
 		return relPath;
 	}
