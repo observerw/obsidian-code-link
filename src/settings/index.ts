@@ -1,6 +1,6 @@
 import { Notice, PluginSettingTab, Setting } from "obsidian";
 import CodeLinkPlugin from "src/main";
-import { FolderSuggest } from "./suggester/folder";
+import { FolderSuggest } from "./suggester";
 import { SupportedLangsArray } from "src/lang/data";
 
 export interface CodeLinkPluginSettings {

@@ -8,7 +8,7 @@ export abstract class Component {
 		protected _plugin: CodeLinkPlugin,
 		protected _sourcePath: string
 	) {
-		this._containerEl = document.createEl("div");
+		this._containerEl = createEl("div");
 	}
 
 	markdown(el: HTMLElement, markdownText: string): void {
