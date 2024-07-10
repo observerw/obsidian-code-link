@@ -39,7 +39,7 @@ export class FileImporter {
 
 		await this._plugin.adapter.mkdir(normalizePath(relTargetDirPath));
 
-		const sourceFilePaths = await globby("**/*", {
+		const sourceFilePaths = await globby(["**/*", "!.*/**/*"], {
 			cwd: sourceDirPath,
 			dot: true,
 			onlyFiles: true,
@@ -64,7 +64,7 @@ export class FileImporter {
 				await fs.mkdir(targetFileDirPath, {
 					recursive: true,
 				});
-				await fs.symlink(sourceFilePath, targetFilePath);
+				await fs.symlink(sourceFilePath, targetFilePath, "junction");
 			})
 		);
 

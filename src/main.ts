@@ -60,7 +60,8 @@ export default class CodeLinkPlugin extends Plugin {
 		const pkgExists = await this.pkgExists();
 		if (this.settings.enableTagSearch && !pkgExists) {
 			new Notice(
-				"⚠️ATTENTION: CodeLink plugin is not ready, please download the necessary components first"
+				"⚠️ATTENTION: CodeLink plugin is not ready, please download the necessary components first",
+				0
 			);
 		}
 
