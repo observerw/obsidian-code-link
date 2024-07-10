@@ -57,9 +57,9 @@ Below the embed preview lists the link to the referenced code file, and the tag 
     <img src="./assets/tag-search.png" width="50%">
 </div>
 
-This feature is implemented with the help of [TreeSitter](https://tree-sitter.github.io/tree-sitter/) and [`.scm` files from the zed editor](https://zed.dev/).
+⚠️ATTENTION: After installing the plugin, if the tag search fails to trigger, try closing and reopening Obsidian.
 
-If you want more languages to be supported, please consider writing tree-sitter queries for other languages modeled after [existing `.scm` files](https://github.com/observerw/obsidian-code-link/tree/main/src/lang/data/scm) and open a pull request. I would appreciate that!
+This feature is implemented with the help of [TreeSitter](https://tree-sitter.github.io/tree-sitter/) and [`.scm` files from the zed editor](https://zed.dev/). Current support languages are: C, C++, JavaScript, TypeScript, Rust, Go, Python. If you want more languages to be supported, please consider writing tree-sitter queries for other languages modeled after [existing `.scm` files](https://github.com/observerw/obsidian-code-link/tree/main/src/lang/data/scm) and open a pull request. I would appreciate that!
 
 # Import Project Into Obsidian Vault
 

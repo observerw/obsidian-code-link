@@ -22,7 +22,7 @@
 
 - 为了能够使用内部链接链接到代码文件，请确保**设置 - 文件和链接 - 检测所有类型的文件**选项已启用。
 - **嵌入式预览仅在阅读视图中有效**，所以如果你发现预览没有显示，请按 `Ctrl/Cmd + E` 切换到阅读视图。
-- 在执行标签搜索之前，请确保设置 - 代码链接 - **启用标签搜索选项**已启用，并且**必要的组件已下载**（通过点击下载必要组件按钮）
+- 在执行标签搜索之前，请确保设置 - 代码链接 - **启用标签搜索选项**已启用，并且**必要的组件已下载**（通过点击下载必要组件按钮）。
 
 <div style="display: flex; justify-content: center;">
     <img src="./assets/download-button.png" width="100%">
@@ -48,8 +48,6 @@
 
 在嵌入式预览下方列出了对所引用的代码文件的链接，以及当前符号的标签路径（例如，如果你链接到一个名为 `methodB` 的方法，它在一个名为 `ClassA` 的类中，标签路径是 `class ClassA > def methodB`）。当你点击标签路径中的符号时，嵌入式预览将临时将显示的代码内容切换到该符号的内容。
 
-
-
 # 标签搜索
 
 **将光标放在代码链接的后面**（例如 `[[main.py]]|`，其中 `|` 是光标）将触发标签搜索。当在标签搜索中选择了指定的符号时，代码链接将被替换。
@@ -58,11 +56,9 @@
     <img src="./assets/tag-search.png" width="50%">
 </div>
 
-此功能是通过 [TreeSitter](https://tree-sitter.github.io/tree-sitter/) 和 [zed 编辑器的 .scm 文件](https://zed.dev/) 实现的。
+⚠️注意：插件安装后，若标签搜索无法正常触发，尝试关闭并重新打开Obsidian。
 
-If you want more languages to be supported, please consider writing tree-sitter queries for other languages modeled after existing `.scm` files and open a pull request. I would appreciate it!
-
-如果你希望支持更多的语言，请考虑模仿[现有的 `.scm` 文件](https://github.com/observerw/obsidian-code-link/tree/main/src/lang/data/scm)编写其他语言的 tree-sitter 查询，并提交一个Pull Request。感激不尽！
+此功能是通过 [TreeSitter](https://tree-sitter.github.io/tree-sitter/) 和 [zed 编辑器的 .scm 文件](https://zed.dev/) 实现的。当前支持的语言包括 C, C++, JavaScript, TypeScript, Rust, Go, Python。如果你希望支持更多的语言，请考虑模仿[现有的 `.scm` 文件](https://github.com/observerw/obsidian-code-link/tree/main/src/lang/data/scm)编写其他语言的 tree-sitter 查询，并提交一个Pull Request。感激不尽！
 
 # 将项目导入 Obsidian 仓库
 
