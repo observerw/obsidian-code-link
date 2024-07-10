@@ -20,11 +20,8 @@ If your plugin does not need CSS, delete this file.
 	font-weight: bold;
 }
 
-.code-link-hover-preview-popover {
-	max-height: 50vh;
-}
-
 .code-link-hover-preview-popover > pre {
+	max-height: 50vh;
 	margin: 0;
 	overflow: auto;
 }
