@@ -51,7 +51,7 @@ Below the embed preview lists the link to the referenced code file, and the tag 
 
 # Tag Search
 
-**Place the cursor behind the code link** (e.g. `[[main.py]]|`, where `|` is the cursor) will trigger tag search. The code link will be replaced when the specified symbol is selected in the tag search.
+**Place the cursor behind the code link** (e.g. `[[main.py]]|`, where `|` is the cursor) will trigger tag search. The code link will be replaced when the specified symbol is selected in the tag search. Entering something from this position will filter the entries in the tag search, e.g. `[[main.py]]def` will filter all entries in the entry that contain the `def` keyword. Note that the entry needs to be immediately followed by `]]`.
 
 <div style="display: flex; justify-content: center;">
     <img src="./assets/tag-search.png" width="50%">
@@ -67,4 +67,4 @@ Obsidian only allows to link to files within the vault, so you need to import th
 
 To import a project, open command palette and run `Code Link: Import project`, then select the project folder you want to import. The project will be imported into the projects folder.
 
-Note that "import" means create a symbol links (or file shortcuts in Windows) to the original files. Symlinks are just a reference to the original file, so if you delete the original file, the symlink will be broken.
+Note that "import" means create symbol links (or file shortcuts in Windows) to the original files. Symlink are just reference to the original file, so if you delete the original file, the symlink will be broken.
