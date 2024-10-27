@@ -1,9 +1,9 @@
 import { dialog } from "@electron/remote";
-import path from "path";
 import * as fs from "fs/promises";
-import CodeLinkPlugin from "src/main";
 import { globby } from "globby";
 import { normalizePath } from "obsidian";
+import path from "path";
+import CodeLinkPlugin from "src/main";
 
 export class FileImporter {
 	constructor(private _plugin: CodeLinkPlugin) {}
@@ -64,7 +64,7 @@ export class FileImporter {
 				await fs.mkdir(targetFileDirPath, {
 					recursive: true,
 				});
-				await fs.symlink(sourceFilePath, targetFilePath, "junction");
+				await fs.link(sourceFilePath, targetFilePath);
 			})
 		);
 
