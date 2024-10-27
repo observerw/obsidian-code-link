@@ -1,13 +1,13 @@
-import * as tar from "tar";
-import { loadTreeSitter } from "src/tree-sitter-patch";
-import type { TreeSitter, Parser, Query } from "src/tree-sitter-patch";
-import { LangPackage, NpmPackageMetadata } from "./types";
-import CodeLinkPlugin from "src/main";
-import { LangScmMap, SupportedLang, SupportedLangs } from "./data";
 import fs from "fs/promises";
+import { requestUrl } from "obsidian";
 import os from "os";
 import path from "path";
-import { requestUrl } from "obsidian";
+import CodeLinkPlugin from "src/main";
+import type { Parser, Query, TreeSitter } from "src/tree-sitter-patch";
+import { loadTreeSitter } from "src/tree-sitter-patch";
+import * as tar from "tar";
+import { LangScmMap, SupportedLang, SupportedLangs } from "./data";
+import { LangPackage, NpmPackageMetadata } from "./types";
 
 type Paths = {
 	relPath: string;
@@ -60,7 +60,7 @@ abstract class Loader<T> {
 		);
 		await fs.writeFile(
 			`${tmpPath}/${pkg}.tgz`,
-			Buffer.from(resp.arrayBuffer)
+			new Uint8Array(resp.arrayBuffer)
 		);
 		await tar.extract({
 			file: `${tmpPath}/${pkg}.tgz`,
