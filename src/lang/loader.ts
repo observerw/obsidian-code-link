@@ -22,16 +22,46 @@ export class TreeSitterLoader {
 
 	async init() {
 		if (this._initialized) return;
-		await TreeSitter.Parser.init({
-			locateFile: (scriptName: string) => {
-				if (scriptName === "tree-sitter.wasm") {
-					// Use a fixed version that matches the installed package
-					return `https://cdn.jsdelivr.net/npm/web-tree-sitter@${WEB_TREE_SITTER_VERSION}/web-tree-sitter.wasm`;
-				}
-				return scriptName;
-			},
-		});
-		this._initialized = true;
+
+		const hasVersion =
+			typeof WEB_TREE_SITTER_VERSION === "string" &&
+			WEB_TREE_SITTER_VERSION.trim().length > 0;
+
+		try {
+			// Primary attempt: load from CDN using the version from package.json (if available)
+			if (hasVersion) {
+				await TreeSitter.Parser.init({
+					locateFile: (scriptName: string) => {
+						if (scriptName === "tree-sitter.wasm") {
+							// Use a fixed version that matches the installed package
+							return `https://cdn.jsdelivr.net/npm/web-tree-sitter@${WEB_TREE_SITTER_VERSION}/web-tree-sitter.wasm`;
+						}
+						return scriptName;
+					},
+				});
+			} else {
+				// If we don't have a usable version, fall back to default initialization
+				await TreeSitter.Parser.init();
+			}
+			this._initialized = true;
+		} catch (err) {
+			console.error("Failed to initialize web-tree-sitter from CDN:", err);
+			new Notice(
+				"CodeLink: Unable to load web-tree-sitter from CDN. Falling back to default initialization."
+			);
+
+			try {
+				// Fallback: let web-tree-sitter resolve the WASM using its default behavior
+				await TreeSitter.Parser.init();
+				this._initialized = true;
+			} catch (fallbackErr) {
+				console.error("Failed to initialize web-tree-sitter (fallback):", fallbackErr);
+				new Notice(
+					"CodeLink: Failed to initialize the code parsing engine. Some features may not work."
+				);
+				throw fallbackErr;
+			}
+		}
 	}
 
 	async load(): Promise<typeof TreeSitter.Parser> {
