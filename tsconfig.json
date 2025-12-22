@@ -7,15 +7,17 @@
 		"target": "ESNext",
 		"allowJs": true,
 		"noImplicitAny": true,
-		"moduleResolution": "node",
+		"moduleResolution": "Bundler",
 		"importHelpers": true,
 		"esModuleInterop": true,
 		"isolatedModules": true,
-		"strictNullChecks": true,
+		"strict": true,
 		"resolveJsonModule": true,
 		"experimentalDecorators": true,
 		"noUncheckedIndexedAccess": true,
-		"lib": ["DOM", "ES5", "ES6", "ES7", "ESNext"]
+		"lib": ["DOM", "ESNext"],
+		"skipLibCheck": true,
+		"types": ["node"]
 	},
-	"include": ["**/*.ts"]
+	"include": ["src/**/*.ts", "src/types.d.ts"]
 }

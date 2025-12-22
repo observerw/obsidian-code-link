@@ -157,7 +157,7 @@ export class Lang {
 	) {}
 
 	private async _package(): Promise<LangPackage> {
-		// eslint-disable-next-line @typescript-eslint/no-var-requires
+		// eslint-disable-next-line @typescript-eslint/no-require-imports
 		return require("node-gyp-build")(this._paths.absPath);
 	}
 
