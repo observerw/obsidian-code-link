@@ -13,17 +13,17 @@ import { CodeLinkHoverPreviewPostProcessor } from "./processor/hover";
 import { SupportedLangsArray } from "./lang/data";
 
 export default class CodeLinkPlugin extends Plugin {
-	settings: CodeLinkPluginSettings;
+	settings!: CodeLinkPluginSettings;
 
-	treeSitterLoader: TreeSitterLoader;
-	langLoader: LangLoader;
-	parser: CodeFileParser;
-	importer: FileImporter;
+	treeSitterLoader!: TreeSitterLoader;
+	langLoader!: LangLoader;
+	parser!: CodeFileParser;
+	importer!: FileImporter;
 
 	async onload() {
 		this.settings = await loadSettings(this);
 
-		this.treeSitterLoader = new TreeSitterLoader(this);
+		this.treeSitterLoader = new TreeSitterLoader();
 		this.langLoader = new LangLoader(this);
 		this.parser = new CodeFileParser(this);
 		this.importer = new FileImporter(this);

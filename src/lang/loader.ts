@@ -10,7 +10,7 @@ const WEB_TREE_SITTER_VERSION = pkg.dependencies["web-tree-sitter"].replace("^",
 export class TreeSitterLoader {
 	private _initialized = false;
 
-	constructor(private _plugin: CodeLinkPlugin) {}
+	constructor() {}
 
 	async exists(): Promise<boolean> {
 		return true;
@@ -69,7 +69,7 @@ export class LangLoader {
 		await this._plugin.treeSitterLoader.init();
 
 		if (this._cache.has(langName)) {
-			return new Lang(this._plugin, langName as SupportedLang, this._cache.get(langName)!);
+			return new Lang(langName as SupportedLang, this._cache.get(langName)!);
 		}
 
 		const relPath = path.join(this._langsDir, `tree-sitter-${langName}.wasm`);
@@ -99,13 +99,12 @@ export class LangLoader {
 		const lang = await TreeSitter.Language.load(new Uint8Array(langWasm));
 		this._cache.set(langName, lang);
 		
-		return new Lang(this._plugin, langName as SupportedLang, lang);
+		return new Lang(langName as SupportedLang, lang);
 	}
 }
 
 export class Lang {
 	constructor(
-		private _plugin: CodeLinkPlugin,
 		private _name: SupportedLang,
 		private _lang: TreeSitter.Language
 	) {}

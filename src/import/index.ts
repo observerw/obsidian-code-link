@@ -24,9 +24,9 @@ export class FileImporter {
 
 		let dialog;
 		try {
-			// eslint-disable-next-line @typescript-eslint/no-var-requires
+			// eslint-disable-next-line @typescript-eslint/no-require-imports
 			({ dialog } = require("@electron/remote"));
-		} catch (error) {
+		} catch {
 			throw new Error(
 				"Project import requires the '@electron/remote' module, which is not available in this environment. " +
 				"Ensure you are running the desktop app and that '@electron/remote' is installed."

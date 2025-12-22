@@ -1,5 +1,5 @@
 import esbuild from "esbuild";
-import process from "process";
+import process from "node:process";
 import builtins from "builtin-modules";
 import inlineImportPlugin from 'esbuild-plugin-inline-import'
 
@@ -38,11 +38,12 @@ const context = await esbuild.context({
 		inlineImportPlugin(),
 	],
 	format: "cjs",
-	target: "esnext",
+	target: "es2022",
 	logLevel: "info",
 	sourcemap: prod ? false : "inline",
 	treeShaking: true,
 	outfile: "main.js",
+	minify: prod,
 	platform: "node",
 });
 
