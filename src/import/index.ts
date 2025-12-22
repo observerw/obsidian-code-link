@@ -22,8 +22,16 @@ export class FileImporter {
 			throw new Error("Project import is not supported on mobile");
 		}
 
-		// eslint-disable-next-line @typescript-eslint/no-var-requires
-		const { dialog } = require("@electron/remote");
+		let dialog;
+		try {
+			// eslint-disable-next-line @typescript-eslint/no-var-requires
+			({ dialog } = require("@electron/remote"));
+		} catch (error) {
+			throw new Error(
+				"Project import requires the '@electron/remote' module, which is not available in this environment. " +
+				"Ensure you are running the desktop app and that '@electron/remote' is installed."
+			);
+		}
 
 		const {
 			filePaths: [sourceDirPath],

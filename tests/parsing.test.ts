@@ -4,7 +4,7 @@ import * as TreeSitter from 'web-tree-sitter';
 import fs from 'fs';
 import path from 'path';
 
-describe('TagTree Parsing Tests', async () => {
+describe('TagTree Parsing Tests', () => {
     let parser: TreeSitter.Parser;
     let pythonLang: TreeSitter.Language;
 
@@ -18,15 +18,12 @@ describe('TagTree Parsing Tests', async () => {
         if (fs.existsSync(wasmPath)) {
             pythonLang = await TreeSitter.Language.load(wasmPath);
             parser.setLanguage(pythonLang);
+        } else {
+            throw new Error(`Python WASM not found at ${wasmPath}. Please run 'npm install' or ensure the file exists.`);
         }
     });
 
     it('should correctly parse python code and find tags', async () => {
-        if (!pythonLang) {
-            console.warn('Python WASM not found, skipping test');
-            return;
-        }
-
         const code = `
 def hello_world():
     print("hello")

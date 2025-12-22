@@ -1,8 +1,11 @@
 import * as TreeSitter from "web-tree-sitter";
-import { requestUrl } from "obsidian";
+import { Notice, requestUrl } from "obsidian";
 import path from "path";
 import CodeLinkPlugin from "src/main";
 import { LangScmMap, SupportedLang, SupportedLangs } from "./data";
+import pkg from "../../package.json";
+
+const WEB_TREE_SITTER_VERSION = pkg.dependencies["web-tree-sitter"].replace("^", "").replace("~", "");
 
 export class TreeSitterLoader {
 	private _initialized = false;
@@ -23,7 +26,7 @@ export class TreeSitterLoader {
 			locateFile: (scriptName: string) => {
 				if (scriptName === "tree-sitter.wasm") {
 					// Use a fixed version that matches the installed package
-					return `https://cdn.jsdelivr.net/npm/web-tree-sitter@0.26.3/web-tree-sitter.wasm`;
+					return `https://cdn.jsdelivr.net/npm/web-tree-sitter@${WEB_TREE_SITTER_VERSION}/web-tree-sitter.wasm`;
 				}
 				return scriptName;
 			},
@@ -39,6 +42,7 @@ export class TreeSitterLoader {
 
 export class LangLoader {
 	private _cache: Map<string, TreeSitter.Language> = new Map();
+	private _failedSaves: Set<string> = new Set();
 
 	constructor(private _plugin: CodeLinkPlugin) {}
 
@@ -78,13 +82,17 @@ export class LangLoader {
 			const response = await requestUrl(url);
 			langWasm = response.arrayBuffer;
 			
-			try {
-				if (!await this._plugin.app.vault.adapter.exists(this._langsDir)) {
-					await this._plugin.app.vault.adapter.mkdir(this._langsDir);
+			if (!this._failedSaves.has(langName)) {
+				try {
+					if (!await this._plugin.app.vault.adapter.exists(this._langsDir)) {
+						await this._plugin.app.vault.adapter.mkdir(this._langsDir);
+					}
+					await this._plugin.app.vault.adapter.writeBinary(relPath, langWasm);
+				} catch (e) {
+					console.error(`Failed to save WASM for ${langName}:`, e);
+					this._failedSaves.add(langName);
+					new Notice(`Failed to cache language support for ${langName}. It will be re-downloaded next time.`);
 				}
-				await this._plugin.app.vault.adapter.writeBinary(relPath, langWasm);
-			} catch (e) {
-				console.warn(`Failed to save WASM for ${langName}:`, e);
 			}
 		}
 
