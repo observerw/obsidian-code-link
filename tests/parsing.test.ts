@@ -11,15 +11,19 @@ describe('TagTree Parsing Tests', () => {
     beforeEach(async () => {
         await TreeSitter.Parser.init();
         parser = new TreeSitter.Parser();
-        // Load python wasm for testing. 
-        // In a real test environment, we'd need the actual .wasm files.
-        // For now, let's mock the basic behavior or try to load it if available.
-        const wasmPath = path.resolve(__dirname, '../node_modules/tree-sitter-python/tree-sitter-python.wasm');
+        // Load python wasm for testing.
+        // Prefer an explicit path via environment variable, otherwise use a local fixture.
+        const wasmPath = process.env.TREE_SITTER_PYTHON_WASM
+            ? path.resolve(process.cwd(), process.env.TREE_SITTER_PYTHON_WASM)
+            : path.resolve(__dirname, 'fixtures', 'tree-sitter-python.wasm');
         if (fs.existsSync(wasmPath)) {
             pythonLang = await TreeSitter.Language.load(wasmPath);
             parser.setLanguage(pythonLang);
         } else {
-            throw new Error(`Python WASM not found at ${wasmPath}. Please run 'npm install' or ensure the file exists.`);
+            throw new Error(
+                `Python WASM not found at ${wasmPath}. ` +
+                `Set TREE_SITTER_PYTHON_WASM or add a fixture at tests/fixtures/tree-sitter-python.wasm.`
+            );
         }
     });
 
