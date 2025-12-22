@@ -4,6 +4,7 @@ import path from "path";
 import CodeLinkPlugin from "src/main";
 import { LangScmMap, SupportedLang, SupportedLangs } from "./data";
 import pkg from "../../package.json";
+import { withRetry } from "../utils";
 
 const WEB_TREE_SITTER_VERSION = pkg.dependencies["web-tree-sitter"].replace("^", "").replace("~", "");
 
@@ -109,15 +110,17 @@ export class LangLoader {
 			langWasm = await this._plugin.app.vault.adapter.readBinary(relPath);
 		} else {
 			const url = `https://cdn.jsdelivr.net/npm/tree-sitter-wasm-prebuilt@${WEB_TREE_SITTER_VERSION}/wasm/tree-sitter-${langName}.wasm`;
-			const response = await requestUrl(url);
+			const response = await withRetry(() => requestUrl(url));
 			langWasm = response.arrayBuffer;
 			
 			if (!this._failedSaves.has(langName)) {
 				try {
-					if (!await this._plugin.app.vault.adapter.exists(this._langsDir)) {
-						await this._plugin.app.vault.adapter.mkdir(this._langsDir);
-					}
-					await this._plugin.app.vault.adapter.writeBinary(relPath, langWasm);
+					await withRetry(async () => {
+						if (!await this._plugin.app.vault.adapter.exists(this._langsDir)) {
+							await this._plugin.app.vault.adapter.mkdir(this._langsDir);
+						}
+						await this._plugin.app.vault.adapter.writeBinary(relPath, langWasm);
+					});
 				} catch (e) {
 					console.error(`Failed to save WASM for ${langName}:`, e);
 					this._failedSaves.add(langName);
