@@ -28,6 +28,9 @@ export class CodeFileParser {
 		const code = await this._plugin.app.vault.cachedRead(file);
 
 		const tree = parser?.parse(code);
+		if (!tree) {
+			return null;
+		}
 		const tagTree = new TagTree(tree, query);
 
 		return tagTree;

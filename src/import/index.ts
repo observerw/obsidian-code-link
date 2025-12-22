@@ -1,7 +1,6 @@
-import { dialog } from "@electron/remote";
 import * as fs from "fs/promises";
 import { globby } from "globby";
-import { normalizePath } from "obsidian";
+import { normalizePath, Platform } from "obsidian";
 import path from "path";
 import CodeLinkPlugin from "src/main";
 
@@ -19,6 +18,13 @@ export class FileImporter {
 	}
 
 	async import(): Promise<string | null> {
+		if (Platform.isMobile) {
+			throw new Error("Project import is not supported on mobile");
+		}
+
+		// eslint-disable-next-line @typescript-eslint/no-var-requires
+		const { dialog } = require("@electron/remote");
+
 		const {
 			filePaths: [sourceDirPath],
 		} = await dialog.showOpenDialog({

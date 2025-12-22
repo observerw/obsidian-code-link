@@ -1,16 +1,11 @@
 import { memorize } from "src/utils";
-import type {
-	Tree,
-	Query,
-	SyntaxNode,
-	QueryMatch,
-} from "src/tree-sitter-patch";
+import * as TreeSitter from "web-tree-sitter";
 
 export class TagTreeNode {
 	private _children: TagTreeNode[] | null = null;
 	private _parent: TagTreeNode | null = null;
 
-	constructor(readonly name: string, readonly syntaxNode: SyntaxNode) {}
+	constructor(readonly name: string, readonly syntaxNode: TreeSitter.Node) {}
 
 	get children(): TagTreeNode[] | null {
 		return this._children;
@@ -78,7 +73,7 @@ export class TagTreeNode {
 
 		const [firstLine, ...restLines] = rawContent.split(/\r?\n/);
 
-		const dedentedLines = restLines.map((line) => `${line.slice(offset)}`);
+		const dedentedLines = restLines.map((line: string) => `${line.slice(offset)}`);
 
 		return [firstLine, ...dedentedLines].join("\n");
 	}
@@ -111,13 +106,13 @@ export class TagPath {
 }
 
 export class TagMatch {
-	constructor(public name: string, public node: SyntaxNode) {}
+	constructor(public name: string, public node: TreeSitter.Node) {}
 
 	get id(): number {
 		return this.node.id;
 	}
 
-	static fromMatch(match: QueryMatch): TagMatch | null {
+	static fromMatch(match: TreeSitter.QueryMatch): TagMatch | null {
 		const captures = match.captures;
 		if (!captures.length) {
 			return null;
@@ -132,7 +127,7 @@ export class TagMatch {
 		return new TagMatch(name, node);
 	}
 
-	static fromMatches(matches: QueryMatch[]): TagMatch[] {
+	static fromMatches(matches: TreeSitter.QueryMatch[]): TagMatch[] {
 		return matches.flatMap((m) => TagMatch.fromMatch(m) ?? []);
 	}
 }
@@ -143,7 +138,7 @@ export class TagMatch {
 export class TagTree {
 	private _root: TagTreeNode;
 
-	constructor(tree: Tree, tagsQuery: Query) {
+	constructor(tree: TreeSitter.Tree, tagsQuery: TreeSitter.Query) {
 		const root = tree.rootNode;
 		this._root = new TagTreeNode("", root);
 
