@@ -1,6 +1,5 @@
 import * as TreeSitter from "web-tree-sitter";
-import { Notice, requestUrl } from "obsidian";
-import path from "path";
+import { Notice, normalizePath, requestUrl } from "obsidian";
 import CodeLinkPlugin from "src/main";
 import { LangScmMap, SupportedLang, SupportedLangs } from "./data";
 import pkg from "../../package.json";
@@ -11,25 +10,62 @@ const WEB_TREE_SITTER_VERSION = pkg.dependencies["web-tree-sitter"].replace("^",
 export class TreeSitterLoader {
 	private _initialized = false;
 
-	constructor() {}
+	constructor(private _plugin: CodeLinkPlugin) {}
+
+	private get _langsDir(): string {
+		const configDir = this._plugin.app.vault.configDir;
+		const pluginId = this._plugin.manifest.id;
+		return normalizePath(`${configDir}/plugins/${pluginId}/langs`);
+	}
+
+	private get _wasmPath(): string {
+		return normalizePath(`${this._langsDir}/tree-sitter.wasm`);
+	}
 
 	async exists(): Promise<boolean> {
-		return true;
+		return await this._plugin.app.vault.adapter.exists(this._wasmPath);
 	}
 
 	async download(): Promise<void> {
-		await this.init();
+		const hasVersion =
+			typeof WEB_TREE_SITTER_VERSION === "string" &&
+			WEB_TREE_SITTER_VERSION.trim().length > 0;
+		
+		if (!hasVersion) return;
+
+		const url = `https://cdn.jsdelivr.net/npm/web-tree-sitter@${WEB_TREE_SITTER_VERSION}/web-tree-sitter.wasm`;
+		const response = await withRetry(() => requestUrl(url));
+		const wasm = response.arrayBuffer;
+
+		if (!(await this._plugin.app.vault.adapter.exists(this._langsDir))) {
+			await this._plugin.app.vault.adapter.mkdir(this._langsDir);
+		}
+		await this._plugin.app.vault.adapter.writeBinary(this._wasmPath, wasm);
 	}
 
 	async init() {
 		if (this._initialized) return;
 
-		const hasVersion =
-			typeof WEB_TREE_SITTER_VERSION === "string" &&
-			WEB_TREE_SITTER_VERSION.trim().length > 0;
-
 		try {
-			// Primary attempt: load from CDN using the version from package.json (if available)
+			if (await this.exists()) {
+				const wasmUrl = this._plugin.app.vault.adapter.getResourcePath(this._wasmPath);
+				await TreeSitter.Parser.init({
+					locateFile: (scriptName: string) => {
+						if (scriptName === "tree-sitter.wasm") {
+							return wasmUrl;
+						}
+						return scriptName;
+					},
+				});
+				this._initialized = true;
+				return;
+			}
+
+			// Fallback to CDN if not cached
+			const hasVersion =
+				typeof WEB_TREE_SITTER_VERSION === "string" &&
+				WEB_TREE_SITTER_VERSION.trim().length > 0;
+
 			if (hasVersion) {
 				await TreeSitter.Parser.init({
 					locateFile: (scriptName: string) => {
@@ -80,11 +116,11 @@ export class LangLoader {
 	private get _langsDir(): string {
 		const configDir = this._plugin.app.vault.configDir;
 		const pluginId = this._plugin.manifest.id;
-		return path.join(configDir, "plugins", pluginId, "langs");
+		return normalizePath(`${configDir}/plugins/${pluginId}/langs`);
 	}
 
 	async exists(langName: string): Promise<boolean> {
-		const relPath = path.join(this._langsDir, `tree-sitter-${langName}.wasm`);
+		const relPath = normalizePath(`${this._langsDir}/tree-sitter-${langName}.wasm`);
 		return await this._plugin.app.vault.adapter.exists(relPath);
 	}
 
@@ -103,7 +139,7 @@ export class LangLoader {
 			return new Lang(langName as SupportedLang, this._cache.get(langName)!);
 		}
 
-		const relPath = path.join(this._langsDir, `tree-sitter-${langName}.wasm`);
+		const relPath = normalizePath(`${this._langsDir}/tree-sitter-${langName}.wasm`);
 		
 		let langWasm: ArrayBuffer;
 		if (await this._plugin.app.vault.adapter.exists(relPath)) {

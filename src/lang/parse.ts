@@ -12,12 +12,12 @@ export class CodeFileParser {
 	}
 
 	async parse(file: TFile): Promise<TagTree | null> {
-		if (!(await this._plugin.pkgExists())) {
+		const langName = getLang(file.path);
+		if (!langName) {
 			return null;
 		}
 
-		const langName = getLang(file.path);
-		const lang = langName && (await this._langLoader.load(langName));
+		const lang = await this._langLoader.load(langName);
 		if (!lang) {
 			return null;
 		}

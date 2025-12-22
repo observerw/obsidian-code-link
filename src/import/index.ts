@@ -1,6 +1,6 @@
 import * as fs from "fs/promises";
 import { globby } from "globby";
-import { normalizePath, Platform } from "obsidian";
+import { normalizePath } from "obsidian";
 import path from "path";
 import CodeLinkPlugin from "src/main";
 
@@ -18,18 +18,14 @@ export class FileImporter {
 	}
 
 	async import(): Promise<string | null> {
-		if (Platform.isMobile) {
-			throw new Error("Project import is not supported on mobile");
-		}
-
 		let dialog;
 		try {
 			// eslint-disable-next-line @typescript-eslint/no-require-imports
 			({ dialog } = require("@electron/remote"));
 		} catch {
 			throw new Error(
-				"Project import is only available in the desktop (Electron) app and is not supported in this environment. " +
-				"The required '@electron/remote' module is not available here, so project import cannot be used."
+				"Project import is only available in the desktop (Electron) app. " +
+				"The required '@electron/remote' module is not available."
 			);
 		}
 
@@ -53,7 +49,7 @@ export class FileImporter {
 
 		await this._plugin.adapter.mkdir(normalizePath(relTargetDirPath));
 
-		const sourceFilePaths = await globby(["**/*", "!.*/**/*"], {
+		const sourceFilePaths: string[] = await globby(["**/*", "!.*/**/*"], {
 			cwd: sourceDirPath,
 			dot: true,
 			onlyFiles: true,
@@ -61,7 +57,7 @@ export class FileImporter {
 			gitignore: this._plugin.settings.importWithIgnore,
 		});
 		await Promise.all(
-			sourceFilePaths.map(async (sourceFilePath) => {
+			sourceFilePaths.map(async (sourceFilePath: string) => {
 				const fileName = path.basename(sourceFilePath);
 				const sourceFileDirPath = path.dirname(sourceFilePath);
 
