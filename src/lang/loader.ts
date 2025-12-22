@@ -78,7 +78,7 @@ export class LangLoader {
 		if (await this._plugin.app.vault.adapter.exists(relPath)) {
 			langWasm = await this._plugin.app.vault.adapter.readBinary(relPath);
 		} else {
-			const url = `https://cdn.jsdelivr.net/npm/tree-sitter-wasm-prebuilt@latest/wasm/tree-sitter-${langName}.wasm`;
+			const url = `https://cdn.jsdelivr.net/npm/tree-sitter-wasm-prebuilt@${WEB_TREE_SITTER_VERSION}/wasm/tree-sitter-${langName}.wasm`;
 			const response = await requestUrl(url);
 			langWasm = response.arrayBuffer;
 			
