@@ -1,135 +1,131 @@
-import fs from "fs/promises";
-import { requestUrl } from "obsidian";
-import os from "os";
-import path from "path";
+import * as TreeSitter from "web-tree-sitter";
+import { Notice, normalizePath, requestUrl } from "obsidian";
 import CodeLinkPlugin from "src/main";
-import type { Parser, Query, TreeSitter } from "src/tree-sitter-patch";
-import { loadTreeSitter } from "src/tree-sitter-patch";
-import * as tar from "tar";
 import { LangScmMap, SupportedLang, SupportedLangs } from "./data";
-import { LangPackage, NpmPackageMetadata } from "./types";
+import pkg from "../../package.json";
+import { withRetry } from "../utils";
 
-type Paths = {
-	relPath: string;
-	absPath: string;
-};
+const WEB_TREE_SITTER_VERSION = pkg.dependencies["web-tree-sitter"].replace("^", "").replace("~", "");
 
-abstract class Loader<T> {
-	constructor(protected _plugin: CodeLinkPlugin) {}
+export class TreeSitterLoader {
+	private _initialized = false;
 
-	protected get _relBasePath(): string {
+	constructor(private _plugin: CodeLinkPlugin) {}
+
+	private get _langsDir(): string {
 		const configDir = this._plugin.app.vault.configDir;
 		const pluginId = this._plugin.manifest.id;
-		const relPath = `${configDir}/plugins/${pluginId}`;
-
-		return relPath;
+		return normalizePath(`${configDir}/plugins/${pluginId}/langs`);
 	}
 
-	protected get _basePath(): string {
-		return this._plugin.adapter.getFullPath(this._relBasePath);
+	private get _wasmPath(): string {
+		return normalizePath(`${this._langsDir}/tree-sitter.wasm`);
 	}
 
-	protected async _tarballUrl(pkg: string) {
-		const { json } = await requestUrl(`https://registry.npmjs.org/${pkg}`);
-		const {
-			versions,
-			"dist-tags": { latest },
-		} = json as NpmPackageMetadata;
-		return versions[latest]!.dist.tarball;
-	}
-
-	protected _pkgPaths(pkg: string): Paths {
-		return {
-			relPath: path.join(this._relBasePath, pkg),
-			absPath: path.join(this._basePath, pkg),
-		};
-	}
-
-	protected async _pkgExists(pkg: string): Promise<boolean> {
-		const { relPath } = this._pkgPaths(pkg);
-		return await this._plugin.adapter.exists(relPath);
-	}
-
-	protected async _downloadPackage(pkg: string): Promise<void> {
-		const tarballUrl = await this._tarballUrl(pkg);
-
-		const resp = await requestUrl(tarballUrl);
-
-		const tmpPath = await fs.mkdtemp(
-			path.join(os.tmpdir(), "tree-sitter-")
-		);
-		await fs.writeFile(
-			`${tmpPath}/${pkg}.tgz`,
-			new Uint8Array(resp.arrayBuffer)
-		);
-		await tar.extract({
-			file: `${tmpPath}/${pkg}.tgz`,
-			cwd: tmpPath,
-		});
-		await fs.cp(`${tmpPath}/package`, `${this._basePath}/${pkg}`, {
-			recursive: true,
-		});
-		await fs.rmdir(tmpPath, { recursive: true });
-	}
-
-	abstract exists(...args: unknown[]): Promise<boolean>;
-
-	abstract download(...args: unknown[]): Promise<void>;
-
-	abstract load(...args: unknown[]): Promise<T | null>;
-}
-
-export class TreeSitterLoader extends Loader<TreeSitter> {
 	async exists(): Promise<boolean> {
-		return await this._pkgExists("tree-sitter");
+		return await this._plugin.app.vault.adapter.exists(this._wasmPath);
 	}
 
 	async download(): Promise<void> {
-		const exists = await this.exists();
-		if (exists) {
-			return;
-		}
+		const hasVersion =
+			typeof WEB_TREE_SITTER_VERSION === "string" &&
+			WEB_TREE_SITTER_VERSION.trim().length > 0;
+		
+		if (!hasVersion) return;
 
-		await this._downloadPackage("tree-sitter");
+		const url = `https://cdn.jsdelivr.net/npm/web-tree-sitter@${WEB_TREE_SITTER_VERSION}/web-tree-sitter.wasm`;
+		const response = await withRetry(() => requestUrl(url));
+		const wasm = response.arrayBuffer;
+
+		if (!(await this._plugin.app.vault.adapter.exists(this._langsDir))) {
+			await this._plugin.app.vault.adapter.mkdir(this._langsDir);
+		}
+		await this._plugin.app.vault.adapter.writeBinary(this._wasmPath, wasm);
 	}
 
-	async load(): Promise<TreeSitter> {
-		const exist = await this.exists();
-		if (!exist) {
-			throw new Error(
-				"Tree-sitter is not downloaded, please download it first"
+	async init() {
+		if (this._initialized) return;
+
+		try {
+			if (await this.exists()) {
+				const wasmUrl = this._plugin.app.vault.adapter.getResourcePath(this._wasmPath);
+				await TreeSitter.Parser.init({
+					locateFile: (scriptName: string) => {
+						if (scriptName === "tree-sitter.wasm") {
+							return wasmUrl;
+						}
+						return scriptName;
+					},
+				});
+				this._initialized = true;
+				return;
+			}
+
+			// Fallback to CDN if not cached
+			const hasVersion =
+				typeof WEB_TREE_SITTER_VERSION === "string" &&
+				WEB_TREE_SITTER_VERSION.trim().length > 0;
+
+			if (hasVersion) {
+				await TreeSitter.Parser.init({
+					locateFile: (scriptName: string) => {
+						if (scriptName === "tree-sitter.wasm") {
+							// Use a fixed version that matches the installed package
+							return `https://cdn.jsdelivr.net/npm/web-tree-sitter@${WEB_TREE_SITTER_VERSION}/web-tree-sitter.wasm`;
+						}
+						return scriptName;
+					},
+				});
+			} else {
+				// If we don't have a usable version, fall back to default initialization
+				await TreeSitter.Parser.init();
+			}
+			this._initialized = true;
+		} catch (err) {
+			console.error("Failed to initialize web-tree-sitter from CDN:", err);
+			new Notice(
+				"CodeLink: Unable to load web-tree-sitter from CDN. Falling back to default initialization."
 			);
+
+			try {
+				// Fallback: let web-tree-sitter resolve the WASM using its default behavior
+				await TreeSitter.Parser.init();
+				this._initialized = true;
+			} catch (fallbackErr) {
+				console.error("Failed to initialize web-tree-sitter (fallback):", fallbackErr);
+				new Notice(
+					"CodeLink: Failed to initialize the code parsing engine. Some features may not work."
+				);
+				throw fallbackErr;
+			}
 		}
+	}
 
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		let treeSitter = (document as any).treeSitter;
-
-		if (!treeSitter) {
-			const { absPath } = this._pkgPaths("tree-sitter");
-			treeSitter = loadTreeSitter(absPath);
-			// FIXME save tree-sitter instance to document, since reload node-gyp module will cause some issues
-			// eslint-disable-next-line @typescript-eslint/no-explicit-any
-			(document as any).treeSitter = treeSitter;
-		}
-
-		return treeSitter;
+	async load(): Promise<typeof TreeSitter.Parser> {
+		await this.init();
+		return TreeSitter.Parser;
 	}
 }
 
-const _pkg = (langName: string): string => `tree-sitter-${langName}`;
+export class LangLoader {
+	private _cache: Map<string, TreeSitter.Language> = new Map();
+	private _failedSaves: Set<string> = new Set();
 
-export class LangLoader extends Loader<Lang> {
+	constructor(private _plugin: CodeLinkPlugin) {}
+
+	private get _langsDir(): string {
+		const configDir = this._plugin.app.vault.configDir;
+		const pluginId = this._plugin.manifest.id;
+		return normalizePath(`${configDir}/plugins/${pluginId}/langs`);
+	}
+
 	async exists(langName: string): Promise<boolean> {
-		return await this._pkgExists(_pkg(langName));
+		const relPath = normalizePath(`${this._langsDir}/tree-sitter-${langName}.wasm`);
+		return await this._plugin.app.vault.adapter.exists(relPath);
 	}
 
 	async download(langName: string): Promise<void> {
-		const exists = await this._pkgExists(_pkg(langName));
-		if (exists) {
-			return;
-		}
-
-		await this._downloadPackage(_pkg(langName));
+		await this.load(langName);
 	}
 
 	async load(langName: string): Promise<Lang> {
@@ -137,47 +133,60 @@ export class LangLoader extends Loader<Lang> {
 			throw new Error(`Language ${langName} is not supported.`);
 		}
 
-		const exists = await this.exists(langName);
-		if (!exists) {
-			throw new Error(
-				`Language ${langName} is not available, please check the available languages in the settings`
-			);
+		await this._plugin.treeSitterLoader.init();
+
+		if (this._cache.has(langName)) {
+			return new Lang(langName as SupportedLang, this._cache.get(langName)!);
 		}
 
-		const paths = this._pkgPaths(_pkg(langName));
-		return new Lang(this._plugin, langName as SupportedLang, paths);
+		const relPath = normalizePath(`${this._langsDir}/tree-sitter-${langName}.wasm`);
+		
+		let langWasm: ArrayBuffer;
+		if (await this._plugin.app.vault.adapter.exists(relPath)) {
+			langWasm = await this._plugin.app.vault.adapter.readBinary(relPath);
+		} else {
+			const url = `https://cdn.jsdelivr.net/npm/tree-sitter-wasm-prebuilt@${WEB_TREE_SITTER_VERSION}/wasm/tree-sitter-${langName}.wasm`;
+			const response = await withRetry(() => requestUrl(url));
+			langWasm = response.arrayBuffer;
+			
+			if (!this._failedSaves.has(langName)) {
+				try {
+					await withRetry(async () => {
+						if (!await this._plugin.app.vault.adapter.exists(this._langsDir)) {
+							await this._plugin.app.vault.adapter.mkdir(this._langsDir);
+						}
+						await this._plugin.app.vault.adapter.writeBinary(relPath, langWasm);
+					});
+				} catch (e) {
+					console.error(`Failed to save WASM for ${langName}:`, e);
+					this._failedSaves.add(langName);
+					new Notice(`Failed to cache language support for ${langName}. It will be re-downloaded next time.`);
+				}
+			}
+		}
+
+		const lang = await TreeSitter.Language.load(new Uint8Array(langWasm));
+		this._cache.set(langName, lang);
+		
+		return new Lang(langName as SupportedLang, lang);
 	}
 }
 
 export class Lang {
 	constructor(
-		private _plugin: CodeLinkPlugin,
 		private _name: SupportedLang,
-		private _paths: Paths
+		private _lang: TreeSitter.Language
 	) {}
 
-	private async _package(): Promise<LangPackage> {
-		// eslint-disable-next-line @typescript-eslint/no-require-imports
-		return require("node-gyp-build")(this._paths.absPath);
-	}
-
-	private async _tagsScm(): Promise<string> {
-		return LangScmMap[this._name];
-	}
-
-	async parser(): Promise<Parser> {
-		const { Parser } = await this._plugin.treeSitterLoader.load();
-		const parser = new Parser();
-		const lang = await this._package();
-		parser.setLanguage(lang);
+	async parser(): Promise<TreeSitter.Parser> {
+		const parser = new TreeSitter.Parser();
+		parser.setLanguage(this._lang);
 		return parser;
 	}
 
-	async tagsQuery(): Promise<Query> {
-		const { Query } = await this._plugin.treeSitterLoader.load();
-		const lang = await this._package();
-		const scm = await this._tagsScm();
-		return new Query(lang, scm);
+	async tagsQuery(): Promise<TreeSitter.Query> {
+		const scm = LangScmMap[this._name];
+		return new TreeSitter.Query(this._lang, scm);
 	}
 
 	get name(): string {

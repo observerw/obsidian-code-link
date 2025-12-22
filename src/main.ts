@@ -1,4 +1,9 @@
-import { FileSystemAdapter, MarkdownView, Notice, Plugin } from "obsidian";
+import {
+	FileSystemAdapter,
+	MarkdownView,
+	Notice,
+	Plugin,
+} from "obsidian";
 import {
 	CodeLinkPluginSettingTab,
 	CodeLinkPluginSettings,
@@ -57,14 +62,6 @@ export default class CodeLinkPlugin extends Plugin {
 		this.addSettingTab(new CodeLinkPluginSettingTab(this));
 		this.registerEditorSuggest(new TagTreeSuggest(this));
 
-		const pkgExists = await this.pkgExists();
-		if (this.settings.enableTagSearch && !pkgExists) {
-			new Notice(
-				"⚠️ATTENTION: CodeLink plugin is not ready, please download the necessary components first",
-				0
-			);
-		}
-
 		const view = this.app.workspace.getActiveViewOfType(MarkdownView);
 		view?.previewMode.rerender(true);
 	}
@@ -74,17 +71,21 @@ export default class CodeLinkPlugin extends Plugin {
 	get adapter(): FileSystemAdapter {
 		const adapter = this.app.vault.adapter;
 		if (!(adapter instanceof FileSystemAdapter)) {
-			throw new Error("Adapter is not FileSystemAdapter");
+			throw new Error("FileSystemAdapter is only available on desktop.");
 		}
 		return adapter;
 	}
 
-	async pkgExists(): Promise<boolean> {
+	async pkgExists(langName?: string): Promise<boolean> {
 		const treeSitterExist = await this.treeSitterLoader.exists();
+		if (langName) {
+			return treeSitterExist && (await this.langLoader.exists(langName));
+		}
+		
 		const langExists = await Promise.all(
 			SupportedLangsArray.map((lang) => this.langLoader.exists(lang))
 		);
 
-		return [treeSitterExist, ...langExists].every(Boolean);
+		return treeSitterExist && langExists.every(Boolean);
 	}
 }
