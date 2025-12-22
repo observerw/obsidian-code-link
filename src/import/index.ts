@@ -28,8 +28,8 @@ export class FileImporter {
 			({ dialog } = require("@electron/remote"));
 		} catch {
 			throw new Error(
-				"Project import requires the '@electron/remote' module, which is not available in this environment. " +
-				"Ensure you are running the desktop app and that '@electron/remote' is installed."
+				"Project import is only available in the desktop (Electron) app and is not supported in this environment. " +
+				"The required '@electron/remote' module is not available here, so project import cannot be used."
 			);
 		}
 
