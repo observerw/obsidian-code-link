@@ -31,6 +31,10 @@ export class CodeFileParser {
 		if (!tree) {
 			return null;
 		}
+
+		if (!query) {
+			return null;
+		}
 		const tagTree = new TagTree(tree, query);
 
 		return tagTree;

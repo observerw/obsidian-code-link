@@ -1,7 +1,7 @@
-import * as TreeSitter from "web-tree-sitter";
-import { Notice, normalizePath, requestUrl } from "obsidian";
+import { Parser, Language, Query } from "web-tree-sitter";
+import { Notice, requestUrl, RequestUrlResponse } from "obsidian";
 import CodeLinkPlugin from "src/main";
-import { LangScmMap, SupportedLang, SupportedLangs } from "./data";
+import { AvailableWasmLangs, LangScmMap } from "./data";
 import pkg from "../../package.json";
 import { withRetry } from "../utils";
 
@@ -12,181 +12,143 @@ export class TreeSitterLoader {
 
 	constructor(private _plugin: CodeLinkPlugin) {}
 
-	private get _langsDir(): string {
-		const configDir = this._plugin.app.vault.configDir;
-		const pluginId = this._plugin.manifest.id;
-		return normalizePath(`${configDir}/plugins/${pluginId}/langs`);
-	}
-
-	private get _wasmPath(): string {
-		return normalizePath(`${this._langsDir}/tree-sitter.wasm`);
-	}
-
-	async exists(): Promise<boolean> {
-		return await this._plugin.app.vault.adapter.exists(this._wasmPath);
-	}
-
-	async download(): Promise<void> {
-		const hasVersion =
-			typeof WEB_TREE_SITTER_VERSION === "string" &&
-			WEB_TREE_SITTER_VERSION.trim().length > 0;
-		
-		if (!hasVersion) return;
-
-		const url = `https://cdn.jsdelivr.net/npm/web-tree-sitter@${WEB_TREE_SITTER_VERSION}/web-tree-sitter.wasm`;
-		const response = await withRetry(() => requestUrl(url));
-		const wasm = response.arrayBuffer;
-
-		if (!(await this._plugin.app.vault.adapter.exists(this._langsDir))) {
-			await this._plugin.app.vault.adapter.mkdir(this._langsDir);
-		}
-		await this._plugin.app.vault.adapter.writeBinary(this._wasmPath, wasm);
-	}
-
 	async init() {
 		if (this._initialized) return;
 
 		try {
-			if (await this.exists()) {
-				const wasmUrl = this._plugin.app.vault.adapter.getResourcePath(this._wasmPath);
-				await TreeSitter.Parser.init({
-					locateFile: (scriptName: string) => {
-						if (scriptName === "tree-sitter.wasm") {
-							return wasmUrl;
-						}
-						return scriptName;
-					},
-				});
-				this._initialized = true;
-				return;
-			}
-
-			// Fallback to CDN if not cached
 			const hasVersion =
 				typeof WEB_TREE_SITTER_VERSION === "string" &&
 				WEB_TREE_SITTER_VERSION.trim().length > 0;
 
-			if (hasVersion) {
-				await TreeSitter.Parser.init({
-					locateFile: (scriptName: string) => {
-						if (scriptName === "tree-sitter.wasm") {
-							// Use a fixed version that matches the installed package
-							return `https://cdn.jsdelivr.net/npm/web-tree-sitter@${WEB_TREE_SITTER_VERSION}/web-tree-sitter.wasm`;
-						}
-						return scriptName;
-					},
-				});
-			} else {
-				// If we don't have a usable version, fall back to default initialization
-				await TreeSitter.Parser.init();
-			}
+			await Parser.init({
+				locateFile: (scriptName: string) => {
+					return `https://cdn.jsdelivr.net/npm/web-tree-sitter@${hasVersion ? WEB_TREE_SITTER_VERSION : "latest"}/${scriptName}`;
+				},
+			});
 			this._initialized = true;
 		} catch (err) {
 			console.error("Failed to initialize web-tree-sitter from CDN:", err);
 			new Notice(
-				"CodeLink: Unable to load web-tree-sitter from CDN. Falling back to default initialization."
+				"CodeLink: Failed to initialize the code parsing engine. Some features may not work."
 			);
-
-			try {
-				// Fallback: let web-tree-sitter resolve the WASM using its default behavior
-				await TreeSitter.Parser.init();
-				this._initialized = true;
-			} catch (fallbackErr) {
-				console.error("Failed to initialize web-tree-sitter (fallback):", fallbackErr);
-				new Notice(
-					"CodeLink: Failed to initialize the code parsing engine. Some features may not work."
-				);
-				throw fallbackErr;
-			}
+			throw err;
 		}
 	}
 
-	async load(): Promise<typeof TreeSitter.Parser> {
+	async load(): Promise<typeof Parser> {
 		await this.init();
-		return TreeSitter.Parser;
+		return Parser;
 	}
 }
 
 export class LangLoader {
-	private _cache: Map<string, TreeSitter.Language> = new Map();
-	private _failedSaves: Set<string> = new Set();
+	private _cache: Map<string, Language> = new Map();
+	private _loading: Map<string, AbortController> = new Map();
 
 	constructor(private _plugin: CodeLinkPlugin) {}
 
-	private get _langsDir(): string {
-		const configDir = this._plugin.app.vault.configDir;
-		const pluginId = this._plugin.manifest.id;
-		return normalizePath(`${configDir}/plugins/${pluginId}/langs`);
-	}
-
-	async exists(langName: string): Promise<boolean> {
-		const relPath = normalizePath(`${this._langsDir}/tree-sitter-${langName}.wasm`);
-		return await this._plugin.app.vault.adapter.exists(relPath);
-	}
-
-	async download(langName: string): Promise<void> {
-		await this.load(langName);
-	}
-
 	async load(langName: string): Promise<Lang> {
-		if (!SupportedLangs.has(langName)) {
-			throw new Error(`Language ${langName} is not supported.`);
+		if (!AvailableWasmLangs.includes(langName)) {
+			throw new Error(`Language ${langName} is not available.`);
 		}
 
 		await this._plugin.treeSitterLoader.init();
 
 		if (this._cache.has(langName)) {
-			return new Lang(langName as SupportedLang, this._cache.get(langName)!);
+			return new Lang(langName, this._cache.get(langName)!);
 		}
 
-		const relPath = normalizePath(`${this._langsDir}/tree-sitter-${langName}.wasm`);
-		
-		let langWasm: ArrayBuffer;
-		if (await this._plugin.app.vault.adapter.exists(relPath)) {
-			langWasm = await this._plugin.app.vault.adapter.readBinary(relPath);
-		} else {
-			const url = `https://cdn.jsdelivr.net/npm/tree-sitter-wasm-prebuilt@${WEB_TREE_SITTER_VERSION}/wasm/tree-sitter-${langName}.wasm`;
-			const response = await withRetry(() => requestUrl(url));
-			langWasm = response.arrayBuffer;
-			
-			if (!this._failedSaves.has(langName)) {
-				try {
-					await withRetry(async () => {
-						if (!await this._plugin.app.vault.adapter.exists(this._langsDir)) {
-							await this._plugin.app.vault.adapter.mkdir(this._langsDir);
-						}
-						await this._plugin.app.vault.adapter.writeBinary(relPath, langWasm);
-					});
-				} catch (e) {
-					console.error(`Failed to save WASM for ${langName}:`, e);
-					this._failedSaves.add(langName);
-					new Notice(`Failed to cache language support for ${langName}. It will be re-downloaded next time.`);
+		if (this._loading.has(langName)) {
+			throw new Error(`Language ${langName} is already loading.`);
+		}
+
+		const controller = new AbortController();
+		this._loading.set(langName, controller);
+
+		try {
+			const url = `https://cdn.jsdelivr.net/npm/@cursorless/tree-sitter-wasms@0.7.0/out/tree-sitter-${langName}.wasm`;
+
+			const response = (await withRetry(async () => {
+				if (controller.signal.aborted) {
+					throw new Error("aborted");
 				}
+				return await requestUrl(url);
+			})) as RequestUrlResponse;
+
+			if (controller.signal.aborted) {
+				throw new Error("aborted");
+			}
+
+			const langWasm = response.arrayBuffer;
+			const lang = await Language.load(new Uint8Array(langWasm));
+			this._cache.set(langName, lang);
+
+			return new Lang(langName, lang);
+		} finally {
+			this._loading.delete(langName);
+		}
+	}
+
+	unload(langName: string) {
+		this.abort(langName);
+		this._cache.delete(langName);
+	}
+
+	abort(langName: string) {
+		const controller = this._loading.get(langName);
+		if (controller) {
+			controller.abort();
+			this._loading.delete(langName);
+		}
+	}
+
+	isLoaded(langName: string): boolean {
+		return this._cache.has(langName);
+	}
+
+	isLoading(langName: string): boolean {
+		return this._loading.has(langName);
+	}
+
+	async preDownload(langs: string[]) {
+		const total = langs.length;
+		let count = 0;
+
+		const notice = new Notice(`CodeLink: Pre-downloading parsers (0/${total})...`, 0);
+
+		for (const lang of langs) {
+			try {
+				await this.load(lang);
+				count++;
+				notice.setMessage(`CodeLink: Pre-downloading parsers (${count}/${total})...`);
+			} catch (err) {
+				console.error(`Failed to pre-download ${lang}:`, err);
 			}
 		}
 
-		const lang = await TreeSitter.Language.load(new Uint8Array(langWasm));
-		this._cache.set(langName, lang);
-		
-		return new Lang(langName as SupportedLang, lang);
+		notice.hide();
+		if (count > 0) {
+			new Notice(`CodeLink: Finished pre-downloading ${count} parsers.`);
+		}
 	}
 }
 
 export class Lang {
 	constructor(
-		private _name: SupportedLang,
-		private _lang: TreeSitter.Language
+		private _name: string,
+		private _lang: Language
 	) {}
 
-	async parser(): Promise<TreeSitter.Parser> {
-		const parser = new TreeSitter.Parser();
+	async parser(): Promise<Parser> {
+		const parser = new Parser();
 		parser.setLanguage(this._lang);
 		return parser;
 	}
 
-	async tagsQuery(): Promise<TreeSitter.Query> {
-		const scm = LangScmMap[this._name];
-		return new TreeSitter.Query(this._lang, scm);
+	async tagsQuery(): Promise<Query | null> {
+		const scm = (LangScmMap as Record<string, string>)[this._name];
+		if (!scm) return null;
+		return new Query(this._lang, scm);
 	}
 
 	get name(): string {

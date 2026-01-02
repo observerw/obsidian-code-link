@@ -1,13 +1,15 @@
-import { Notice, PluginSettingTab, Setting } from "obsidian";
+import { PluginSettingTab, Setting, Notice } from "obsidian";
 import CodeLinkPlugin from "src/main";
-import { FolderSuggest } from "./suggester";
+import { FolderSuggest, LangSuggest } from "./suggester";
 import { SupportedLangsArray } from "src/lang/data";
+import { capitalizeLang } from "src/utils";
 
 export interface CodeLinkPluginSettings {
 	relImportDirPath: string;
 	enableTagSearch: boolean;
 	showPathInEmbed: boolean;
 	importWithIgnore: boolean;
+	preDownloadLangs: string[];
 }
 
 const DEFAULT_SETTINGS: CodeLinkPluginSettings = {
@@ -15,6 +17,7 @@ const DEFAULT_SETTINGS: CodeLinkPluginSettings = {
 	enableTagSearch: true,
 	showPathInEmbed: true,
 	importWithIgnore: true,
+	preDownloadLangs: [...SupportedLangsArray],
 };
 
 export const loadSettings = async (plugin: CodeLinkPlugin) => {
@@ -37,78 +40,6 @@ export const loadSettings = async (plugin: CodeLinkPlugin) => {
 export class CodeLinkPluginSettingTab extends PluginSettingTab {
 	constructor(private _plugin: CodeLinkPlugin) {
 		super(_plugin.app, _plugin);
-	}
-
-	private async _downloadBtnSetting(containerEl: HTMLElement) {
-		const downloadBtnSetting = new Setting(containerEl).setName(
-			"Download necessary components"
-		);
-
-		const pkgExists = await this._plugin.pkgExists();
-		if (!pkgExists) {
-			downloadBtnSetting.setDesc(
-				createFragment((el) => {
-					const p = el.createEl("p", {
-						cls: "code-link-settings-prompt",
-						attr: {
-							status: "warning",
-						},
-						text: "⚠️ATTENTION: Please download the necessary components first to use the plugin",
-					});
-
-					el.append(p);
-				})
-			);
-		} else {
-			const supportedLangs = SupportedLangsArray.join(", ");
-			downloadBtnSetting.setDesc(
-				createFragment((el) => {
-					const p = el.createEl("p", {
-						cls: "code-link-settings-prompt",
-						attr: {
-							status: "success",
-						},
-						text: `✅You have downloaded the necessary components, current supported languages are: ${supportedLangs}`,
-					});
-
-					el.append(p);
-				})
-			);
-		}
-
-		downloadBtnSetting.addButton((btn) => {
-			const icon = pkgExists ? "check" : "download";
-
-			btn.setDisabled(pkgExists)
-				.setIcon(icon)
-				.onClick(async () => {
-					new Notice(
-						"Code Link: Downloading necessary components..."
-					);
-					btn.setIcon("loader").setDisabled(true);
-
-					try {
-						await Promise.all([
-							this._plugin.treeSitterLoader.download(),
-							...SupportedLangsArray.map((lang) =>
-								this._plugin.langLoader.download(lang)
-							),
-						]);
-					} catch (e: unknown) {
-						const message = (e as Error).message;
-						new Notice(`Code Link: Download failed: ${message}`);
-						btn.setIcon("download-triangle").setDisabled(false);
-						return;
-					}
-
-					btn.setIcon("check").setDisabled(true);
-					new Notice(
-						"Code Link: Download complete, you are ready to use the plugin!"
-					);
-
-					this.display();
-				});
-		});
 	}
 
 	private async _tagSearchSetting(containerEl: HTMLElement) {
@@ -166,16 +97,66 @@ export class CodeLinkPluginSettingTab extends PluginSettingTab {
 			});
 	}
 
+	private async _downloadSetting(containerEl: HTMLElement) {
+		new Setting(containerEl).setHeading().setName("Parsers download");
+
+		new Setting(containerEl)
+			.setName("Add parser")
+			.setDesc("Search and add a new language parser")
+			.addSearch((cb) => {
+				cb.setPlaceholder("Search language...")
+				new LangSuggest(this.app, cb.inputEl, async (lang) => {
+					if (this._plugin.settings.preDownloadLangs.includes(lang)) {
+						new Notice(`Parser for ${lang} is already added`);
+						return;
+					}
+					
+					this._plugin.settings.preDownloadLangs.push(lang);
+					this._plugin.settings.preDownloadLangs = [...this._plugin.settings.preDownloadLangs];
+					this.display();
+
+					try {
+						await this._plugin.langLoader.load(lang);
+					} catch (e) {
+						if ((e as Error).message.contains("aborted")) return;
+						new Notice(`Failed to download parser for ${lang}: ${e}`);
+						this._plugin.settings.preDownloadLangs = this._plugin.settings.preDownloadLangs.filter(l => l !== lang);
+					}
+					this.display();
+				});
+			});
+
+		const langsContainer = containerEl.createDiv("codelink-langs-container");
+		
+		this._plugin.settings.preDownloadLangs.forEach((lang) => {
+			const isLoading = this._plugin.langLoader.isLoading(lang);
+			const s = new Setting(langsContainer)
+				.setName(capitalizeLang(lang))
+				.addButton((btn) => {
+					btn.setIcon("trash")
+						.setTooltip("Remove parser")
+						.onClick(async () => {
+							this._plugin.langLoader.unload(lang);
+							this._plugin.settings.preDownloadLangs = this._plugin.settings.preDownloadLangs.filter(l => l !== lang);
+							this.display();
+						});
+				});
+			
+			if (isLoading) {
+				s.setDesc("Downloading...");
+				s.controlEl.createEl("div", { cls: "codelink-loading-spinner" });
+			}
+		});
+	}
+
 	async display() {
 		const { containerEl } = this;
 
 		containerEl.empty();
 
 		await this._tagSearchSetting(containerEl);
-		if (this._plugin.settings.enableTagSearch) {
-			await this._downloadBtnSetting(containerEl);
-		}
 		await this._importSetting(containerEl);
 		await this._previewSetting(containerEl);
+		await this._downloadSetting(containerEl);
 	}
 }

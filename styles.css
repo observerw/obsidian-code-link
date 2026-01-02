@@ -37,3 +37,19 @@ If your plugin does not need CSS, delete this file.
 .code-link-settings-prompt[status="warning"] {
 	color: red;
 }
+
+.codelink-loading-spinner {
+	width: 16px;
+	height: 16px;
+	border: 2px solid var(--background-modifier-border);
+	border-top: 2px solid var(--interactive-accent);
+	border-radius: 50%;
+	animation: codelink-spin 1s linear infinite;
+	display: inline-block;
+	margin-left: 10px;
+}
+
+@keyframes codelink-spin {
+	0% { transform: rotate(0deg); }
+	100% { transform: rotate(360deg); }
+}

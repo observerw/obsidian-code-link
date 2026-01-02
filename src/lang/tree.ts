@@ -1,11 +1,11 @@
 import { memorize } from "src/utils";
-import * as TreeSitter from "web-tree-sitter";
+import { Node, Query, QueryMatch, Tree } from "web-tree-sitter";
 
 export class TagTreeNode {
 	private _children: TagTreeNode[] | null = null;
 	private _parent: TagTreeNode | null = null;
 
-	constructor(readonly name: string, readonly syntaxNode: TreeSitter.Node) {}
+	constructor(readonly name: string, readonly syntaxNode: Node) {}
 
 	get children(): TagTreeNode[] | null {
 		return this._children;
@@ -106,13 +106,13 @@ export class TagPath {
 }
 
 export class TagMatch {
-	constructor(public name: string, public node: TreeSitter.Node) {}
+	constructor(public name: string, public node: Node) {}
 
 	get id(): number {
 		return this.node.id;
 	}
 
-	static fromMatch(match: TreeSitter.QueryMatch): TagMatch | null {
+	static fromMatch(match: QueryMatch): TagMatch | null {
 		const captures = match.captures;
 		if (!captures.length) {
 			return null;
@@ -127,7 +127,7 @@ export class TagMatch {
 		return new TagMatch(name, node);
 	}
 
-	static fromMatches(matches: TreeSitter.QueryMatch[]): TagMatch[] {
+	static fromMatches(matches: QueryMatch[]): TagMatch[] {
 		return matches.flatMap((m) => TagMatch.fromMatch(m) ?? []);
 	}
 }
@@ -138,7 +138,7 @@ export class TagMatch {
 export class TagTree {
 	private _root: TagTreeNode;
 
-	constructor(tree: TreeSitter.Tree, tagsQuery: TreeSitter.Query) {
+	constructor(tree: Tree, tagsQuery: Query) {
 		const root = tree.rootNode;
 		this._root = new TagTreeNode("", root);
 

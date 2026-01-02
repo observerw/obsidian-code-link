@@ -22,11 +22,7 @@ By creating links with symbols, you can reference only the code parts that inter
 
 - To be able to link to the code file with internal link, make sure that the **Settings - Files and Links - Detect all types of files** option are enabled.
 - **Embed preview only works in reading view**, so if you find that the preview is not displayed, please **switch to reading view** by pressing `Ctrl/Cmd + E`.
-- Before you perform a tag search, make sure that Settings - Code Link - **Enable tag search option** is enabled and **necessary components have been downloaded** (by clicking the Download necessary components button).
-
-<div style="display: flex; justify-content: center;">
-    <img src="./assets/download-button.png" width="100%">
-</div>
+- Before you perform a tag search, make sure that Settings - Code Link - **Enable tag search option** is enabled.
 
 # Usage
 

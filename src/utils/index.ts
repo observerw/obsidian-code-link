@@ -27,3 +27,31 @@ export async function withRetry<T>(
 		return withRetry(fn, retries - 1, delay * 2);
 	}
 }
+
+export function capitalizeLang(lang: string): string {
+	const specialMap: Record<string, string> = {
+		cpp: "C++",
+		c_sharp: "C#",
+		javascript: "JavaScript",
+		typescript: "TypeScript",
+		tsx: "TSX",
+		html: "HTML",
+		css: "CSS",
+		scss: "SCSS",
+		json: "JSON",
+		xml: "XML",
+		yaml: "YAML",
+		php: "PHP",
+		gdscript: "GDScript",
+		hcl: "HCL",
+		dtd: "DTD",
+		r: "R",
+	};
+
+	if (specialMap[lang]) return specialMap[lang];
+
+	return lang
+		.split(/[_-]/)
+		.map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+		.join(" ");
+}
