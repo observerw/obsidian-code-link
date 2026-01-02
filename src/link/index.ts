@@ -41,7 +41,8 @@ export class CodeLinkItem {
 
 	@memorize
 	get lang(): string | null {
-		return getLang(this.fileLink);
+		const targetFile = this.file;
+		return targetFile ? getLang(targetFile.path) : getLang(this.fileLink);
 	}
 
 	@memorize

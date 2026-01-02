@@ -15,6 +15,7 @@ import { CodeLinkEmbedPreviewPostProcessor } from "./processor/embed";
 import { TagTreeSuggest } from "./modal/suggest";
 import { FileImporter } from "./import";
 import { CodeLinkHoverPreviewPostProcessor } from "./processor/hover";
+import { codeLinkLivePreviewExtension } from "./processor/live-preview";
 
 export default class CodeLinkPlugin extends Plugin {
 	settings!: CodeLinkPluginSettings;

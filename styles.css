@@ -7,8 +7,18 @@ If your plugin does not need CSS, delete this file.
 
 */
 
-/* .code-link-embed-preview-code {
-} */
+.code-link-lp-container {
+	margin: 1em 0;
+}
+
+.code-link-loading {
+	padding: 1em;
+	color: var(--text-muted);
+	font-style: italic;
+	border: 1px dashed var(--background-modifier-border);
+	border-radius: 4px;
+	text-align: center;
+}
 
 .code-link-embed-preview-text {
 	font-size: 0.8em;
