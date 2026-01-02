@@ -1,5 +1,5 @@
-import { memorize } from "src/utils";
-import { Node, Query, QueryMatch, Tree } from "web-tree-sitter";
+import { memorize, dedent } from "src/utils";
+import * as TreeSitter from "web-tree-sitter";
 
 export class TagPath {
 	static readonly DELIMITER = ">";
@@ -63,15 +63,7 @@ export class TagTreeNode {
 	// O(L) where L = content length, memoized
 	@memorize
 	get content(): string {
-		const text = this.syntaxNode.text;
-		const indent = this.syntaxNode.startPosition.column;
-		if (!indent) return text;
-
-		const lines = text.split(/\r?\n/);
-		for (let i = 1; i < lines.length; i++) {
-			lines[i] = lines[i]!.slice(indent);
-		}
-		return lines.join("\n");
+		return dedent(this.syntaxNode.text);
 	}
 
 	get startLine(): number {

@@ -55,14 +55,14 @@ describe('TagTreeNode', () => {
 	it('should handle content indentation', () => {
 		const node = createMockNode({
 			id: 1,
-			text: "def hello():\n    print('hi')",
+			text: "    def hello():\n        print('hi')",
 			startPosition: { row: 0, column: 4 } as TreeSitter.Point,
 			endPosition: { row: 1, column: 18 } as TreeSitter.Point
 		});
 
 		const tagNode = new TagTreeNode("hello", node);
-		// First line is preserved, subsequent lines have indentation removed based on start column
-		expect(tagNode.content).toBe("def hello():\nprint('hi')");
+		// Common indentation (4 spaces) is removed from all lines
+		expect(tagNode.content).toBe("def hello():\n    print('hi')");
 	});
 
 	it('should handle content with no indentation', () => {
