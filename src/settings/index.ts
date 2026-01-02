@@ -37,6 +37,10 @@ export const loadSettings = async (plugin: CodeLinkPlugin) => {
 	);
 };
 
+export const saveSettings = async (plugin: CodeLinkPlugin) => {
+	await plugin.saveData(plugin.settings);
+};
+
 export class CodeLinkPluginSettingTab extends PluginSettingTab {
 	constructor(private _plugin: CodeLinkPlugin) {
 		super(_plugin.app, _plugin);
@@ -104,25 +108,25 @@ export class CodeLinkPluginSettingTab extends PluginSettingTab {
 			.setName("Add parser")
 			.setDesc("Search and add a new language parser")
 			.addSearch((cb) => {
-				cb.setPlaceholder("Search language...")
+				cb.setPlaceholder("Search language...");
 				new LangSuggest(this.app, cb.inputEl, async (lang) => {
 					if (this._plugin.settings.preDownloadLangs.includes(lang)) {
 						new Notice(`Parser for ${lang} is already added`);
 						return;
 					}
-					
-					this._plugin.settings.preDownloadLangs.push(lang);
-					this._plugin.settings.preDownloadLangs = [...this._plugin.settings.preDownloadLangs];
-					this.display();
 
 					try {
 						await this._plugin.langLoader.load(lang);
+						this._plugin.settings.preDownloadLangs = [
+							...this._plugin.settings.preDownloadLangs,
+							lang,
+						];
+						this.display();
 					} catch (e) {
-						if ((e as Error).message.contains("aborted")) return;
-						new Notice(`Failed to download parser for ${lang}: ${e}`);
-						this._plugin.settings.preDownloadLangs = this._plugin.settings.preDownloadLangs.filter(l => l !== lang);
+						const message = e instanceof Error ? e.message : String(e);
+						if (message.includes("aborted")) return;
+						new Notice(`Failed to download parser for ${lang}: ${message}`);
 					}
-					this.display();
 				});
 			});
 

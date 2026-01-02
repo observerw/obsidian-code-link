@@ -7,6 +7,13 @@ import { withRetry } from "../utils";
 
 const WEB_TREE_SITTER_VERSION = pkg.dependencies["web-tree-sitter"].replace("^", "").replace("~", "");
 
+/**
+ * Version of @cursorless/tree-sitter-wasms package used for downloading language parsers.
+ * This is separate from WEB_TREE_SITTER_VERSION as they are different packages with
+ * independent versioning schemes.
+ */
+const TREE_SITTER_WASMS_VERSION = "0.7.0";
+
 export class TreeSitterLoader {
 	private _initialized = false;
 
@@ -65,15 +72,14 @@ export class LangLoader {
 		const controller = new AbortController();
 		this._loading.set(langName, controller);
 
+		let loadSuccessful = false;
+
 		try {
-			const url = `https://cdn.jsdelivr.net/npm/@cursorless/tree-sitter-wasms@0.7.0/out/tree-sitter-${langName}.wasm`;
+			const url = `https://cdn.jsdelivr.net/npm/@cursorless/tree-sitter-wasms@${TREE_SITTER_WASMS_VERSION}/out/tree-sitter-${langName}.wasm`;
 
 			const response = (await withRetry(async () => {
-				if (controller.signal.aborted) {
-					throw new Error("aborted");
-				}
 				return await requestUrl(url);
-			})) as RequestUrlResponse;
+			}, 3, 1000, controller.signal)) as RequestUrlResponse;
 
 			if (controller.signal.aborted) {
 				throw new Error("aborted");
@@ -83,9 +89,13 @@ export class LangLoader {
 			const lang = await Language.load(new Uint8Array(langWasm));
 			this._cache.set(langName, lang);
 
+			loadSuccessful = true;
 			return new Lang(langName, lang);
 		} finally {
 			this._loading.delete(langName);
+			if (!loadSuccessful && controller) {
+				controller.abort();
+			}
 		}
 	}
 
