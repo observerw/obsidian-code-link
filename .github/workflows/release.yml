@@ -1,0 +1,48 @@
+name: Release Obsidian plugin
+
+on:
+  push:
+    tags:
+      - "*"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Build plugin
+        run: pnpm run build
+
+      - name: Create release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          tag="${GITHUB_REF#refs/tags/}"
+          
+          # Verify version matches tag
+          version=$(jq -r .version manifest.json)
+          if [ "v$version" != "$tag" ] && [ "$version" != "$tag" ]; then
+            echo "Error: Version in manifest.json ($version) does not match tag ($tag)"
+            exit 1
+          fi
+
+          gh release create "$tag" \
+            --title="$tag" \
+            --generate-notes \
+            main.js manifest.json styles.css

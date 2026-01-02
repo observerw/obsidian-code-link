@@ -15,8 +15,6 @@ import { CodeLinkEmbedPreviewPostProcessor } from "./processor/embed";
 import { TagTreeSuggest } from "./modal/suggest";
 import { FileImporter } from "./import";
 import { CodeLinkHoverPreviewPostProcessor } from "./processor/hover";
-import { SupportedLangsArray } from "./lang/data";
-import { codeLinkLivePreviewExtension } from "./processor/live-preview";
 
 export default class CodeLinkPlugin extends Plugin {
 	settings!: CodeLinkPluginSettings;
@@ -33,6 +31,9 @@ export default class CodeLinkPlugin extends Plugin {
 		this.langLoader = new LangLoader(this);
 		this.parser = new CodeFileParser(this);
 		this.importer = new FileImporter(this);
+
+		// Pre-download configured language parsers in the background
+		this.langLoader.preDownload(this.settings.preDownloadLangs);
 
 		this.addCommand({
 			id: "import-project",
@@ -77,18 +78,5 @@ export default class CodeLinkPlugin extends Plugin {
 			throw new Error("FileSystemAdapter is only available on desktop.");
 		}
 		return adapter;
-	}
-
-	async pkgExists(langName?: string): Promise<boolean> {
-		const treeSitterExist = await this.treeSitterLoader.exists();
-		if (langName) {
-			return treeSitterExist && (await this.langLoader.exists(langName));
-		}
-		
-		const langExists = await Promise.all(
-			SupportedLangsArray.map((lang) => this.langLoader.exists(lang))
-		);
-
-		return treeSitterExist && langExists.every(Boolean);
 	}
 }

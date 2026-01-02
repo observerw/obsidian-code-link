@@ -61,7 +61,7 @@ export class CodeLinkEmbedPreview extends Component {
 			return;
 		}
 
-		const nodes = targetNode.parents.concat(targetNode);
+		const nodes = [...targetNode.ancestors, targetNode];
 		const nodeLink = nodes
 			.map(({ name }) => `[[${name}]]`)
 			.join(` ${TagPath.DELIMITER} `);
