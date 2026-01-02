@@ -93,7 +93,7 @@ export class LangLoader {
 			return new Lang(langName, lang);
 		} finally {
 			this._loading.delete(langName);
-			if (!loadSuccessful && controller) {
+			if (!loadSuccessful && !controller.signal.aborted) {
 				controller.abort();
 			}
 		}

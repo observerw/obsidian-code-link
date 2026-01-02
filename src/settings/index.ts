@@ -37,10 +37,6 @@ export const loadSettings = async (plugin: CodeLinkPlugin) => {
 	);
 };
 
-export const saveSettings = async (plugin: CodeLinkPlugin) => {
-	await plugin.saveData(plugin.settings);
-};
-
 export class CodeLinkPluginSettingTab extends PluginSettingTab {
 	constructor(private _plugin: CodeLinkPlugin) {
 		super(_plugin.app, _plugin);
