@@ -1,5 +1,5 @@
 import { memorize } from "src/utils";
-import * as TreeSitter from "web-tree-sitter";
+import { Node, Query, QueryMatch, Tree } from "web-tree-sitter";
 
 export class TagPath {
 	static readonly DELIMITER = ">";
