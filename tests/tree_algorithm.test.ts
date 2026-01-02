@@ -16,6 +16,12 @@ describe('TagPath', () => {
 		expect(tagPath.tags).toEqual(["A", "B", "C"]);
 		expect(tagPath.toString()).toBe(path);
 	});
+
+	it('should handle empty string', () => {
+		const tagPath = TagPath.from("");
+		expect(tagPath.tags).toEqual([]);
+		expect(tagPath.toString()).toBe("");
+	});
 });
 
 describe('TagTreeNode', () => {
@@ -57,6 +63,19 @@ describe('TagTreeNode', () => {
 		const tagNode = new TagTreeNode("hello", node);
 		// First line is preserved, subsequent lines have indentation removed based on start column
 		expect(tagNode.content).toBe("def hello():\nprint('hi')");
+	});
+
+	it('should handle content with no indentation', () => {
+		const node = createMockNode({
+			id: 1,
+			text: "def hello():\n    print('hi')",
+			startPosition: { row: 0, column: 0 } as TreeSitter.Point,
+			endPosition: { row: 1, column: 18 } as TreeSitter.Point
+		});
+
+		const tagNode = new TagTreeNode("hello", node);
+		// When column is 0, content should be returned as-is
+		expect(tagNode.content).toBe("def hello():\n    print('hi')");
 	});
 });
 
@@ -118,5 +137,26 @@ describe('TagTree', () => {
 
 		const tagTree = new TagTree(mockTree, mockQuery);
 		expect(tagTree.at(TagPath.from("Level1>Level2>Level3"))?.name).toBe("Level3");
+	});
+
+	it('should return correct path for nodes', () => {
+		const rootSyntaxNode = createMockNode({ id: 0 });
+		const parentSyntaxNode = createMockNode({ id: 1, parent: rootSyntaxNode });
+		const childSyntaxNode = createMockNode({ id: 2, parent: parentSyntaxNode });
+
+		const mockTree = { rootNode: rootSyntaxNode } as TreeSitter.Tree;
+		const mockQuery = {
+			matches: vi.fn().mockReturnValue([
+				{ captures: [{ node: parentSyntaxNode }, { node: { text: "Parent" } }] },
+				{ captures: [{ node: childSyntaxNode }, { node: { text: "Child" } }] }
+			])
+		} as unknown as TreeSitter.Query;
+
+		const tagTree = new TagTree(mockTree, mockQuery);
+		const parent = tagTree.nodes[0]!;
+		const child = parent.children[0]!;
+
+		expect(tagTree.path(parent).toString()).toBe("Parent");
+		expect(tagTree.path(child).toString()).toBe("Parent>Child");
 	});
 });

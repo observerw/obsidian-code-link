@@ -8,7 +8,7 @@ export class TagPath {
 
 	// O(k) where k = path length
 	static from(path: string): TagPath {
-		return new TagPath(path.split(this.DELIMITER));
+		return new TagPath(path ? path.split(this.DELIMITER) : []);
 	}
 
 	// O(k)
@@ -68,7 +68,6 @@ export class TagTreeNode {
 		if (!indent) return text;
 
 		const lines = text.split(/\r?\n/);
-		lines[0] = lines[0]!;
 		for (let i = 1; i < lines.length; i++) {
 			lines[i] = lines[i]!.slice(indent);
 		}
