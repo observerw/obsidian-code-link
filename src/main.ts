@@ -32,6 +32,9 @@ export default class CodeLinkPlugin extends Plugin {
 		this.parser = new CodeFileParser(this);
 		this.importer = new FileImporter(this);
 
+		// Pre-download configured language parsers in the background
+		this.langLoader.preDownload(this.settings.preDownloadLangs);
+
 		this.addCommand({
 			id: "import-project",
 			name: "Import project",

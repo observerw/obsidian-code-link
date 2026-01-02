@@ -17,14 +17,21 @@ export const memorize = (
 export async function withRetry<T>(
 	fn: () => Promise<T>,
 	retries = 3,
-	delay = 1000
+	delay = 1000,
+	signal?: AbortSignal
 ): Promise<T> {
 	try {
+		if (signal?.aborted) {
+			throw new Error("aborted");
+		}
 		return await fn();
 	} catch (e) {
+		if (signal?.aborted) {
+			throw new Error("aborted");
+		}
 		if (retries <= 0) throw e;
 		await new Promise((resolve) => setTimeout(resolve, delay));
-		return withRetry(fn, retries - 1, delay * 2);
+		return withRetry(fn, retries - 1, delay * 2, signal);
 	}
 }
 

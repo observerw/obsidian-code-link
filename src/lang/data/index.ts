@@ -74,3 +74,20 @@ export const AvailableWasmLangs = [
 	"yaml",
 	"zig",
 ];
+
+/**
+ * Languages from AvailableWasmLangs that have corresponding SCM query definitions
+ * in LangScmMap, and thus support full functionality including tag searching.
+ */
+export const WasmLangsWithScmSupport = AvailableWasmLangs.filter(
+	(lang) => lang in LangScmMap
+);
+
+/**
+ * Languages from AvailableWasmLangs that currently do not have SCM query
+ * definitions in LangScmMap. These languages have parser support only
+ * (no tag searching functionality).
+ */
+export const WasmLangsWithoutScmSupport = AvailableWasmLangs.filter(
+	(lang) => !(lang in LangScmMap)
+);

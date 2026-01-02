@@ -36,7 +36,7 @@ export class LangSuggest extends AbstractInputSuggest<string> {
 	protected getSuggestions(query: string): string[] {
 		const lowerCaseInputStr = query.toLowerCase();
 		return AvailableWasmLangs.filter((lang) =>
-			lang.toLowerCase().includes(lowerCaseInputStr) || 
+			lang.toLowerCase().includes(lowerCaseInputStr) ||
 			capitalizeLang(lang).toLowerCase().includes(lowerCaseInputStr)
 		);
 	}
