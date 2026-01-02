@@ -31,3 +31,41 @@ export function dedent(text: string): string {
 		})
 		.join('\n');
 }
+
+/**
+ * Capitalize the first letter of a string.
+ */
+export function capitalize(text: string): string {
+	return text.charAt(0).toUpperCase() + text.slice(1);
+}
+
+/**
+ * Capitalize a language name, replacing underscores with spaces.
+ */
+export function capitalizeLang(lang: string): string {
+	const specialMap: Record<string, string> = {
+		cpp: "C++",
+		c_sharp: "C#",
+		tsx: "TSX",
+		javascript: "JavaScript",
+		typescript: "TypeScript",
+		json: "JSON",
+		html: "HTML",
+		css: "CSS",
+		scss: "SCSS",
+		yaml: "YAML",
+		xml: "XML",
+		php: "PHP",
+		lua: "Lua",
+	};
+
+	const special: string | undefined = specialMap[lang.toLowerCase()];
+	if (special) {
+		return special;
+	}
+
+	return lang
+		.split("_")
+		.map((part) => capitalize(part))
+		.join(" ");
+}
