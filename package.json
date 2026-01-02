@@ -18,6 +18,7 @@
 	"author": "observerw",
 	"license": "MIT",
 	"devDependencies": {
+		"@codemirror/state": "^6.5.3",
 		"@codemirror/view": "^6.34.1",
 		"@electron/remote": "^2.1.3",
 		"@eslint/js": "^9.11.1",

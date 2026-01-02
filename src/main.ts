@@ -16,6 +16,7 @@ import { TagTreeSuggest } from "./modal/suggest";
 import { FileImporter } from "./import";
 import { CodeLinkHoverPreviewPostProcessor } from "./processor/hover";
 import { SupportedLangsArray } from "./lang/data";
+import { codeLinkLivePreviewExtension } from "./processor/live-preview";
 
 export default class CodeLinkPlugin extends Plugin {
 	settings!: CodeLinkPluginSettings;
@@ -58,6 +59,8 @@ export default class CodeLinkPlugin extends Plugin {
 		this.registerMarkdownPostProcessor(
 			new CodeLinkHoverPreviewPostProcessor(this).process
 		);
+
+		this.registerEditorExtension(codeLinkLivePreviewExtension(this));
 
 		this.addSettingTab(new CodeLinkPluginSettingTab(this));
 		this.registerEditorSuggest(new TagTreeSuggest(this));

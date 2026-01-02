@@ -37,3 +37,10 @@ If your plugin does not need CSS, delete this file.
 .code-link-settings-prompt[status="warning"] {
 	color: red;
 }
+
+.code-link-lp-container {
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 4px;
+	padding: 8px;
+	margin: 8px 0;
+}
