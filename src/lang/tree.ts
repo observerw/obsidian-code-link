@@ -1,81 +1,77 @@
 import { memorize } from "src/utils";
 import { Node, Query, QueryMatch, Tree } from "web-tree-sitter";
 
+export class TagPath {
+	static readonly DELIMITER = ">";
+
+	constructor(readonly tags: string[]) {}
+
+	// O(k) where k = path length
+	static from(path: string): TagPath {
+		return new TagPath(path ? path.split(this.DELIMITER) : []);
+	}
+
+	// O(k)
+	toString(): string {
+		return this.tags.join(TagPath.DELIMITER);
+	}
+}
+
 export class TagTreeNode {
-	private _children: TagTreeNode[] | null = null;
-	private _parent: TagTreeNode | null = null;
+	readonly children: TagTreeNode[] = [];
+	parent: TagTreeNode | null = null;
 
-	constructor(readonly name: string, readonly syntaxNode: Node) {}
-
-	get children(): TagTreeNode[] | null {
-		return this._children;
-	}
-
-	set children(children: TagTreeNode[]) {
-		if (this._children) {
-			throw new Error("children already set");
-		}
-		this._children = children;
-	}
-
-	get parent(): TagTreeNode | null {
-		return this._parent;
-	}
-
-	set parent(parent: TagTreeNode | null) {
-		if (this._parent) {
-			throw new Error("parent already set");
-		}
-		this._parent = parent;
-	}
-
-	get parents(): TagTreeNode[] {
-		const parents: TagTreeNode[] = [];
-		let current = this.parent;
-		while (current && !current.root) {
-			parents.push(current);
-			current = current.parent;
-		}
-		return parents.reverse();
-	}
-
-	get root(): boolean {
-		return this.parent === null;
-	}
+	constructor(
+		readonly name: string,
+		readonly syntaxNode: TreeSitter.Node
+	) {}
 
 	get id(): number {
 		return this.syntaxNode.id;
 	}
 
+	get root(): boolean {
+		return !this.parent;
+	}
+
+	// O(d) where d = depth, memoized to O(1) after first call
+	@memorize
+	get ancestors(): TagTreeNode[] {
+		if (!this.parent || this.parent.root) return [];
+		return [...this.parent.ancestors, this.parent];
+	}
+
+	// O(m) where m = name length, memoized
 	@memorize
 	get tag(): string {
 		return this.name.replaceAll(/[\s<>#()]/g, "");
 	}
 
-	get tags(): string[] {
-		return [...this.parents, this].map((n) => n.tag);
-	}
-
+	// O(d), memoized
+	@memorize
 	get tagPath(): TagPath {
-		return TagPath.fromTags(this.tags);
+		return new TagPath([...this.ancestors, this].map((n) => n.tag));
 	}
 
+	// O(d)
 	get display(): string {
-		return [...this.parents, this]
+		return [...this.ancestors, this]
 			.map((n) => `\`${n.name}\``)
 			.join(` <span style="color: red;">${TagPath.DELIMITER}</span> `);
 	}
 
+	// O(L) where L = content length, memoized
 	@memorize
 	get content(): string {
-		const offset = this.syntaxNode.startPosition.column;
-		const rawContent = this.syntaxNode.text;
+		const text = this.syntaxNode.text;
+		const indent = this.syntaxNode.startPosition.column;
+		if (!indent) return text;
 
-		const [firstLine, ...restLines] = rawContent.split(/\r?\n/);
-
-		const dedentedLines = restLines.map((line: string) => `${line.slice(offset)}`);
-
-		return [firstLine, ...dedentedLines].join("\n");
+		const lines = text.split(/\r?\n/);
+		for (let i = 1; i < lines.length; i++) {
+			lines[i] = lines[i]!.slice(indent);
+		}
+		return lines.join("\n");
 	}
 
 	get startLine(): number {
@@ -87,147 +83,70 @@ export class TagTreeNode {
 	}
 }
 
-export class TagPath {
-	static DELIMITER = ">";
-
-	private constructor(public tags: string[]) {}
-
-	static from(path: string): TagPath {
-		return new TagPath(path.split(TagPath.DELIMITER));
-	}
-
-	static fromTags(tags: string[]): TagPath {
-		return new TagPath(tags);
-	}
-
-	toString(): string {
-		return this.tags.join(TagPath.DELIMITER);
-	}
-}
-
-export class TagMatch {
-	constructor(public name: string, public node: Node) {}
-
-	get id(): number {
-		return this.node.id;
-	}
-
-	static fromMatch(match: QueryMatch): TagMatch | null {
-		const captures = match.captures;
-		if (!captures.length) {
-			return null;
-		}
-
-		const itemMatch = captures[0]!;
-		const nameMatches = captures.slice(1);
-
-		const name = nameMatches.map(({ node: { text } }) => text).join(" ");
-		const node = itemMatch.node;
-
-		return new TagMatch(name, node);
-	}
-
-	static fromMatches(matches: QueryMatch[]): TagMatch[] {
-		return matches.flatMap((m) => TagMatch.fromMatch(m) ?? []);
-	}
-}
-
-/**
- * filtered version of the AST, only containing tag nodes
- */
 export class TagTree {
-	private _root: TagTreeNode;
+	private readonly root: TagTreeNode;
+	private readonly pathIndex = new Map<string, TagTreeNode>();
 
-	constructor(tree: Tree, tagsQuery: Query) {
-		const root = tree.rootNode;
-		this._root = new TagTreeNode("", root);
+	// O(n * h) where n = tag nodes, h = AST height
+	constructor(tree: TreeSitter.Tree, tagsQuery: TreeSitter.Query) {
+		this.root = new TagTreeNode("", tree.rootNode);
 
-		const tagTreeNodes = TagMatch.fromMatches(tagsQuery.matches(root)).map(
-			({ name, node }) => new TagTreeNode(name, node)
-		);
-		const tagTreeNodesLookup = new Map(
-			tagTreeNodes.map((n) => [n.syntaxNode.id, n])
-		);
+		// O(n)
+		const nodes = tagsQuery.matches(tree.rootNode).flatMap(({ captures }) => {
+			if (!captures.length) return [];
+			const name = captures.slice(1).map((c) => c.node.text).join(" ");
+			return [new TagTreeNode(name, captures[0]!.node)];
+		});
 
-		const tagTreeNodeChildren = (node: TagTreeNode): TagTreeNode[] => {
-			const children: TagTreeNode[] = [];
+		// O(n)
+		const idMap = new Map(nodes.map((n) => [n.id, n]));
 
-			const nodeList = [...node.syntaxNode.children];
-			while (nodeList.length) {
-				const childNode = nodeList.shift();
-				if (!childNode) {
-					continue;
-				}
-
-				const tagNode = tagTreeNodesLookup.get(childNode.id);
-				if (tagNode) {
-					children.push(tagNode);
-				} else {
-					nodeList.push(...childNode.children);
-				}
-			}
-
-			return children;
-		};
-
-		for (const tagTreeNode of [...tagTreeNodes, this._root]) {
-			const children = tagTreeNodeChildren(tagTreeNode);
-			tagTreeNode.children = children;
-			for (const child of children) {
-				child.parent = tagTreeNode;
-			}
+		// O(n * h) - each node traverses up to h ancestors
+		for (const node of nodes) {
+			const parent = this.findParent(node.syntaxNode.parent, idMap);
+			node.parent = parent;
+			parent.children.push(node);
+			this.pathIndex.set(node.tagPath.toString(), node);
 		}
 	}
 
-	get dfs(): TagTreeNode[] {
-		const stack = [...(this._root.children ?? [])];
-		const nodes: TagTreeNode[] = [];
+	// O(h)
+	private findParent(
+		syntaxNode: TreeSitter.Node | null,
+		idMap: Map<number, TagTreeNode>
+	): TagTreeNode {
+		while (syntaxNode) {
+			const tagNode = idMap.get(syntaxNode.id);
+			if (tagNode) return tagNode;
+			syntaxNode = syntaxNode.parent;
+		}
+		return this.root;
+	}
 
+	// O(n)
+	get dfs(): TagTreeNode[] {
+		const result: TagTreeNode[] = [];
+		const stack = [...this.root.children];
 		while (stack.length) {
 			const node = stack.pop()!;
-			nodes.push(node);
-			stack.push(...(node.children ?? []));
+			result.push(node);
+			stack.push(...node.children);
 		}
-
-		return nodes;
+		return result;
 	}
 
-	get bfs(): TagTreeNode[] {
-		const queue = [...(this._root.children ?? [])];
-		const nodes: TagTreeNode[] = [];
-
-		while (queue.length) {
-			const node = queue.shift()!;
-			nodes.push(node);
-			queue.push(...(node.children ?? []));
-		}
-
-		return nodes;
-	}
-
+	// O(1)
 	get nodes(): TagTreeNode[] {
-		return this._root.children ?? [];
+		return this.root.children;
 	}
 
+	// O(k) where k = path length
 	at(path: TagPath): TagTreeNode | null {
-		let current = this._root;
-		for (const tag of path.tags) {
-			const child = current.children?.find((c) => c.tag == tag);
-			if (!child) {
-				return null;
-			}
-			current = child;
-		}
-		return current;
+		return this.pathIndex.get(path.toString()) ?? null;
 	}
 
+	// O(1), delegates to memoized tagPath
 	path(node: TagTreeNode): TagPath {
-		const tags = [node.tag];
-		let current = node;
-		while (current.parent && !current.parent.root) {
-			tags.unshift(current.parent.tag);
-			current = current.parent;
-		}
-		return TagPath.fromTags(tags);
+		return node.tagPath;
 	}
 }
